@@ -258,7 +258,7 @@
 <body>
 
 <header>
-  <h1>📦 Inventur Scanner <span style="font-size:11px;font-weight:400;opacity:.55">Build 16</span></h1>
+  <h1>📦 Inventur Scanner <span style="font-size:11px;font-weight:400;opacity:.55">Build 17</span></h1>
   <p id="hdr-sub">Keine Inventurdatei geladen</p>
 </header>
 
@@ -1033,8 +1033,10 @@ function renderFinish() {
     return `<tr><td>${i.item}${scText}</td><td style="font-size:12px">${i.bez}</td>${defCell}</tr>`;
   }).join('');
 
-  const xtraRows = extra.map(([k, v]) =>
-    `<tr><td>${k}</td><td style="text-align:center">${v}</td></tr>`).join('');
+  const xtraRows = extra.map(([k, v]) => {
+    const bez = S.ml?.i?.[k]?.n || '';
+    return `<tr><td>${k}</td><td style="font-size:12px">${bez}</td><td style="text-align:center">${v}</td></tr>`;
+  }).join('');
 
   div.innerHTML = `
     <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px;text-align:center">
@@ -1056,7 +1058,7 @@ function renderFinish() {
     <details style="margin-top:8px">
       <summary style="font-weight:600;color:var(--orange)">Extra-Artikel (${extra.length} Pos. · ${extraStk} Stk.)</summary>
       <table class="rtable" style="margin-top:8px">
-        <thead><tr><th>Item-Nr.</th><th>Anzahl</th></tr></thead>
+        <thead><tr><th>Item-Nr.</th><th>Bezeichnung</th><th>Anzahl</th></tr></thead>
         <tbody>${xtraRows}</tbody>
       </table>
     </details>` : ''}
@@ -1092,8 +1094,11 @@ async function downloadXLSX() {
       const itm   = String(raw[r][iItm] || '').trim();
       if (!itm) continue;
       const count = S.scanned[itm] || 0;
-      const addr  = XLSX.utils.encode_cell({ r, c: iGez });
-      ws[addr]    = { t: 'n', v: count };
+      ws[XLSX.utils.encode_cell({ r, c: iGez })] = { t: 'n', v: count };
+      if (iBez >= 0) {
+        const bez = S.ml?.i?.[itm]?.n || String(raw[r][iBez] || '');
+        ws[XLSX.utils.encode_cell({ r, c: iBez })] = { t: 's', v: bez };
+      }
     }
 
     // Append extra items at bottom
