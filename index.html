@@ -271,6 +271,35 @@
 
     details summary { cursor: pointer; user-select: none; padding: 6px 0; }
     details[open] summary { margin-bottom: 8px; }
+
+    /* ── UPDATE BANNER ── */
+    #update-banner {
+      position: fixed;
+      bottom: calc(62px + env(safe-area-inset-bottom, 0px));
+      left: 12px; right: 12px;
+      background: #2d3748;
+      color: #fff;
+      border-radius: 14px;
+      padding: 12px 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      z-index: 80;
+      box-shadow: 0 4px 20px rgba(0,0,0,.35);
+      font-size: 14px;
+    }
+    #update-banner button {
+      background: var(--green);
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      padding: 7px 16px;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      white-space: nowrap;
+    }
   </style>
 </head>
 
@@ -466,6 +495,14 @@
     <video id="video-ss" playsinline muted autoplay></video>
     <button class="btn btn-outline" style="margin-top:16px" onclick="closeSSModal()">Abbrechen</button>
   </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     UPDATE BANNER (Service Worker)
+══════════════════════════════════════════ -->
+<div id="update-banner" class="hidden">
+  <span>Update verfügbar</span>
+  <button onclick="applyUpdate()">Neu laden</button>
 </div>
 
 <!-- ══════════════════════════════════════════
@@ -1051,6 +1088,44 @@ function b64ToBuffer(b64) {
   const view = new Uint8Array(buf);
   for (let i = 0; i < bin.length; i++) view[i] = bin.charCodeAt(i);
   return buf;
+}
+
+// ── SERVICE WORKER ────────────────────────────────────────────────────────────
+let swReg        = null;
+let swRefreshing = false;
+
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('./sw.js')
+    .then(reg => {
+      swReg = reg;
+
+      // Bereits wartender SW (z.B. nach Seiten-Reload)
+      if (reg.waiting) showUpdateBanner();
+
+      reg.addEventListener('updatefound', () => {
+        const newSW = reg.installing;
+        newSW.addEventListener('statechange', () => {
+          // Neuer SW installiert + alter SW kontrolliert Seite → Banner zeigen
+          if (newSW.state === 'installed' && navigator.serviceWorker.controller) {
+            showUpdateBanner();
+          }
+        });
+      });
+    })
+    .catch(e => console.warn('SW Registrierung fehlgeschlagen:', e));
+
+  // Nach skipWaiting + Aktivierung: Seite neu laden
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (!swRefreshing) { swRefreshing = true; location.reload(); }
+  });
+}
+
+function showUpdateBanner() {
+  document.getElementById('update-banner').classList.remove('hidden');
+}
+
+function applyUpdate() {
+  if (swReg?.waiting) swReg.waiting.postMessage({ type: 'SKIP_WAITING' });
 }
 </script>
 
