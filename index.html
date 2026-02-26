@@ -249,6 +249,9 @@
     details summary { cursor: pointer; user-select: none; padding: 6px 0; }
     details[open] summary { margin-bottom: 8px; }
 
+    .btn-sound        { background: var(--green); color: #fff; border: none; }
+    .btn-sound.off    { background: #fff; color: var(--muted); border: 2px solid var(--border); }
+
     /* ── UPDATE BANNER ── */
     #update-banner {
       position: fixed;
@@ -451,7 +454,10 @@
     <p id="scan-hint" style="text-align:center;color:var(--muted);font-size:13px;padding:10px 0 4px">
       Barcode mittig in den Rahmen halten …
     </p>
-    <button class="btn btn-outline" style="margin-top:4px" onclick="stopScan()">⏹ Stoppen</button>
+    <div style="display:flex;gap:8px;margin-top:4px">
+      <button class="btn btn-sm btn-sound" id="btn-sound-main" onclick="toggleSound()" style="flex:1">🔔 Ton</button>
+      <button class="btn btn-outline btn-sm" style="flex:1" onclick="stopScan()">⏹ Stoppen</button>
+    </div>
   </div>
 </div>
 
@@ -477,7 +483,10 @@
     <p style="text-align:center;color:var(--muted);font-size:13px;padding:10px 0 4px">
       Barcode mittig in den Rahmen halten …
     </p>
-    <button class="btn btn-outline" style="margin-top:4px" onclick="closeSSModal()">Abbrechen</button>
+    <div style="display:flex;gap:8px;margin-top:4px">
+      <button class="btn btn-sm btn-sound" id="btn-sound-ss" onclick="toggleSound()" style="flex:1">🔔 Ton</button>
+      <button class="btn btn-outline btn-sm" style="flex:1" onclick="closeSSModal()">Abbrechen</button>
+    </div>
   </div>
 </div>
 
@@ -525,6 +534,10 @@ let lastCode = null, lastCodeTime = 0;
 // Scanner auto-reopen after qty confirm
 let scannerAutoReopen = false;
 
+// Sound + Haptic
+let soundOn  = localStorage.getItem('inventur_sound') !== '0'; // default: an
+let audioCtx = null;
+
 // ── INIT ─────────────────────────────────────────────────────────────────────
 (async () => {
   // Load masterlist from GitHub Pages
@@ -554,6 +567,7 @@ let scannerAutoReopen = false;
   } catch (e) { console.warn('session restore failed:', e); }
 
   updateUI();
+  updateSoundButtons();
 })();
 
 // ── PAGE NAVIGATION ──────────────────────────────────────────────────────────
@@ -660,6 +674,42 @@ function updateUI() {
     : 'Keine Inventurdatei geladen';
 }
 
+// ── SOUND + HAPTIC ────────────────────────────────────────────────────────────
+function updateSoundButtons() {
+  document.querySelectorAll('.btn-sound').forEach(btn => {
+    btn.textContent = soundOn ? '🔔 Ton an' : '🔕 Ton aus';
+    btn.classList.toggle('off', !soundOn);
+  });
+}
+
+function toggleSound() {
+  soundOn = !soundOn;
+  localStorage.setItem('inventur_sound', soundOn ? '1' : '0');
+  // AudioContext beim ersten Einschalten via User-Gesture anlegen (iOS-Pflicht)
+  if (soundOn && !audioCtx) {
+    try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch (_) {}
+  }
+  updateSoundButtons();
+}
+
+function playBeep() {
+  if (!soundOn) return;
+  try {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    const osc  = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    osc.frequency.value = 1320;
+    osc.type = 'sine';
+    gain.gain.setValueAtTime(0.4, audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.12);
+    osc.start(audioCtx.currentTime);
+    osc.stop(audioCtx.currentTime + 0.12);
+  } catch (_) {}
+}
+
 // ── MAIN SCANNER ─────────────────────────────────────────────────────────────
 async function toggleScan() {
   const modal = document.getElementById('scan-modal');
@@ -667,6 +717,11 @@ async function toggleScan() {
 
   modal.classList.add('open');
   document.getElementById('btn-cam').textContent = '⏹ Scannen stoppen';
+
+  // AudioContext vorab anlegen (User-Gesture vorhanden)
+  if (soundOn && !audioCtx) {
+    try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch (_) {}
+  }
 
   if (!reader1D) reader1D = new ZXing.BrowserMultiFormatReader();
   try {
@@ -703,7 +758,8 @@ function handleCode(code) {
   const invItem = S.inv?.find(i => i.item === code);
   const name = invItem?.bez || S.ml?.i?.[code]?.n || '';
   document.getElementById('scan-hint').textContent = name ? `${code}  ·  ${name}` : `Erkannt: ${code}`;
-  if (navigator.vibrate) navigator.vibrate(60);
+  playBeep();
+  if (soundOn && navigator.vibrate) navigator.vibrate(60);
   openQtyModal(code);
 }
 
@@ -823,6 +879,11 @@ async function startSearchScan() {
   const modal = document.getElementById('ss-modal');
   modal.classList.add('open');
 
+  // AudioContext vorab anlegen (User-Gesture vorhanden)
+  if (soundOn && !audioCtx) {
+    try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch (_) {}
+  }
+
   if (!readerSS) readerSS = new ZXing.BrowserMultiFormatReader();
   try {
     await readerSS.decodeFromConstraints(
@@ -831,9 +892,11 @@ async function startSearchScan() {
       (result) => {
         if (!result) return;
         const code = result.getText();
-        if (!/^(\d{7}|\d{10})$/.test(code)) return;  // nur 7 oder 10 Stellen
+        if (!/^(\d{7}|\d{10})$/.test(code)) return;
         readerSS.reset();
         modal.classList.remove('open');
+        playBeep();
+        if (soundOn && navigator.vibrate) navigator.vibrate(60);
         document.getElementById('srch-inp').value = code;
         doSearch();
       });
