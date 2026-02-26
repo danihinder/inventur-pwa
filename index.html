@@ -258,7 +258,7 @@
 <body>
 
 <header>
-  <h1>📦 Inventur Scanner <span style="font-size:11px;font-weight:400;opacity:.55">Build 19</span></h1>
+  <h1>📦 Inventur Scanner <span id="build-lbl" style="font-size:11px;font-weight:400;opacity:.55;cursor:default" onclick="onBuildTap()">Build 20</span></h1>
   <p id="hdr-sub">Keine Inventurdatei geladen</p>
 </header>
 
@@ -503,6 +503,39 @@ let scannerAutoReopen = false;
 let soundOn  = localStorage.getItem('inventur_sound') !== '0'; // default: an
 let audioCtx = null;
 
+// Expert Mode
+let expertMode = localStorage.getItem('inventur_expert') === '1';
+let _buildTaps = 0, _buildTimer = null;
+function onBuildTap() {
+  _buildTaps++;
+  clearTimeout(_buildTimer);
+  _buildTimer = setTimeout(() => { _buildTaps = 0; }, 2000);
+  if (_buildTaps >= 7) {
+    _buildTaps = 0;
+    clearTimeout(_buildTimer);
+    if (expertMode) {
+      expertMode = false;
+      localStorage.removeItem('inventur_expert');
+      _updateBuildLabel();
+      renderFinish();
+    } else {
+      const pin = prompt('PIN:');
+      if (pin === '675756') {
+        expertMode = true;
+        localStorage.setItem('inventur_expert', '1');
+        _updateBuildLabel();
+        renderFinish();
+      }
+    }
+  }
+}
+function _updateBuildLabel() {
+  const el = document.getElementById('build-lbl');
+  if (!el) return;
+  el.style.opacity = expertMode ? '1' : '.55';
+  el.style.color   = expertMode ? '#f59e0b' : '';
+}
+
 // ── INIT ─────────────────────────────────────────────────────────────────────
 (async () => {
   // Load masterlist from GitHub Pages
@@ -533,6 +566,7 @@ let audioCtx = null;
 
   updateUI();
   updateSoundButtons();
+  _updateBuildLabel();
 })();
 
 // ── PAGE NAVIGATION ──────────────────────────────────────────────────────────
@@ -1026,9 +1060,11 @@ function renderFinish() {
   const extraStk = extra.reduce((s, [, v]) => s + v, 0);
 
   const missRows = missingItems.map(i => {
-    const defCell = i.qoh !== null
-      ? `<td style="text-align:center;font-weight:700;color:var(--red)">${i.deficit}</td>`
-      : `<td style="text-align:center;color:var(--muted)">—</td>`;
+    const defCell = expertMode
+      ? (i.qoh !== null
+          ? `<td style="text-align:center;font-weight:700;color:var(--red)">${i.deficit}</td>`
+          : `<td style="text-align:center;color:var(--muted)">—</td>`)
+      : '';
     const scText = i.sc > 0 ? ` <span style="color:var(--orange);font-size:11px">(${i.sc} gez.)</span>` : '';
     return `<tr><td>${i.item}${scText}</td><td style="font-size:12px">${i.bez}</td>${defCell}</tr>`;
   }).join('');
@@ -1056,9 +1092,11 @@ function renderFinish() {
       sc:   v,
     })),
   ].map(i => {
-    const qohCell = i.qoh !== null
-      ? `<td style="text-align:center">${i.qoh}</td>`
-      : `<td style="text-align:center;color:var(--muted)">—</td>`;
+    const qohCell = expertMode
+      ? (i.qoh !== null
+          ? `<td style="text-align:center">${i.qoh}</td>`
+          : `<td style="text-align:center;color:var(--muted)">—</td>`)
+      : '';
     return `<tr>
       <td>${i.item}</td>
       <td style="font-size:12px">${i.bez}</td>
@@ -1078,7 +1116,7 @@ function renderFinish() {
     <details style="margin-top:8px">
       <summary style="font-weight:600;color:var(--green)">Gezählte Artikel (${Object.keys(S.scanned).length} Pos.)</summary>
       <table class="rtable" style="margin-top:8px">
-        <thead><tr><th>Item-Nr.</th><th>Bezeichnung</th><th style="text-align:center">QOH</th><th style="text-align:center">Gezählt</th></tr></thead>
+        <thead><tr><th>Item-Nr.</th><th>Bezeichnung</th>${expertMode ? '<th style="text-align:center">QOH</th>' : ''}<th style="text-align:center">Gezählt</th></tr></thead>
         <tbody>${scannedRows}</tbody>
       </table>
     </details>` : ''}
@@ -1087,7 +1125,7 @@ function renderFinish() {
     <details style="margin-top:8px">
       <summary style="font-weight:600;color:var(--red)">Fehlende Artikel (${missingItems.length} Pos. · ${totalDeficit} Stk.)</summary>
       <table class="rtable" style="margin-top:8px">
-        <thead><tr><th>Item-Nr.</th><th>Bezeichnung</th><th style="text-align:center">noch fehlend</th></tr></thead>
+        <thead><tr><th>Item-Nr.</th><th>Bezeichnung</th>${expertMode ? '<th style="text-align:center">noch fehlend</th>' : ''}</tr></thead>
         <tbody>${missRows}</tbody>
       </table>
     </details>` : ''}
