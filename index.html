@@ -127,13 +127,13 @@
     .ptext{ text-align: center; font-size: 12px; color: var(--muted); margin-top: 5px; }
 
     /* ── SCANNER ── */
-    #scanner-wrap {
+    .scanner-wrap {
       position: relative;
       border-radius: 12px;
       overflow: hidden;
       background: #000;
     }
-    #video-main { width: 100%; display: block; }
+    .scanner-wrap video { width: 100%; display: block; }
     .scan-overlay {
       position: absolute; inset: 0;
       display: flex; align-items: center; justify-content: center;
@@ -467,7 +467,7 @@
 ══════════════════════════════════════════ -->
 <div class="modal-bg" id="scan-modal">
   <div class="modal">
-    <div id="scanner-wrap">
+    <div class="scanner-wrap">
       <video id="video-main" playsinline muted autoplay></video>
       <div class="scan-overlay">
         <div class="scan-box"></div>
@@ -497,9 +497,17 @@
 ══════════════════════════════════════════ -->
 <div class="modal-bg" id="ss-modal">
   <div class="modal">
-    <h2 style="margin-bottom:16px">Barcode für Suche scannen</h2>
-    <video id="video-ss" playsinline muted autoplay></video>
-    <button class="btn btn-outline" style="margin-top:16px" onclick="closeSSModal()">Abbrechen</button>
+    <div class="scanner-wrap">
+      <video id="video-ss" playsinline muted autoplay></video>
+      <div class="scan-overlay">
+        <div class="scan-box"></div>
+        <div class="scan-line"></div>
+      </div>
+    </div>
+    <p style="text-align:center;color:var(--muted);font-size:13px;padding:10px 0 4px">
+      Barcode mittig in den Rahmen halten …
+    </p>
+    <button class="btn btn-outline" style="margin-top:4px" onclick="closeSSModal()">Abbrechen</button>
   </div>
 </div>
 
@@ -852,9 +860,11 @@ async function startSearchScan() {
       'video-ss',
       (result) => {
         if (!result) return;
+        const code = result.getText();
+        if (!/^(\d{7}|\d{10})$/.test(code)) return;  // nur 7 oder 10 Stellen
         readerSS.reset();
         modal.classList.remove('open');
-        document.getElementById('srch-inp').value = result.getText();
+        document.getElementById('srch-inp').value = code;
         doSearch();
       });
   } catch (e) {
