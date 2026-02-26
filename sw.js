@@ -1,7 +1,7 @@
 // ── Inventur Scanner – Service Worker ────────────────────────────────────────
 // WICHTIG: CACHE_NAME hochzählen (v2, v3, …) bei jedem Deployment.
 // Das löst die Update-Erkennung im Browser aus.
-const CACHE_NAME = 'inventur-v10';
+const CACHE_NAME = 'inventur-v11';
 
 // App-Shell (müssen alle erfolgreich geladen werden)
 const CORE_URLS = [
@@ -18,12 +18,13 @@ const CDN_URLS = [
   'https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js',
 ];
 
-// ── INSTALL: Cache befüllen ──────────────────────────────────────────────────
+// ── INSTALL: Cache befüllen + sofort aktivieren ──────────────────────────────
 self.addEventListener('install', event => {
   event.waitUntil((async () => {
     const cache = await caches.open(CACHE_NAME);
     await cache.addAll(CORE_URLS);
     await Promise.allSettled(CDN_URLS.map(u => cache.add(u)));
+    await self.skipWaiting(); // nicht auf Tab-Schliessung warten
   })());
 });
 
@@ -71,7 +72,3 @@ self.addEventListener('fetch', event => {
   );
 });
 
-// ── MESSAGE: Skip Waiting auf Anfrage der App ────────────────────────────────
-self.addEventListener('message', event => {
-  if (event.data?.type === 'SKIP_WAITING') self.skipWaiting();
-});
