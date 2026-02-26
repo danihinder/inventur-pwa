@@ -258,7 +258,7 @@
 <body>
 
 <header>
-  <h1>📦 Inventur Scanner <span style="font-size:11px;font-weight:400;opacity:.55">Build 17</span></h1>
+  <h1>📦 Inventur Scanner <span style="font-size:11px;font-weight:400;opacity:.55">Build 18</span></h1>
   <p id="hdr-sub">Keine Inventurdatei geladen</p>
 </header>
 
@@ -1038,6 +1038,35 @@ function renderFinish() {
     return `<tr><td>${k}</td><td style="font-size:12px">${bez}</td><td style="text-align:center">${v}</td></tr>`;
   }).join('');
 
+  // Gezählte Artikel: alle gescannten Positionen (Inventur + Extra), editierbar
+  const inpStyle = 'width:58px;text-align:center;border:1px solid var(--border);border-radius:6px;padding:2px 4px;font-size:14px';
+  const scannedRows = [
+    ...S.inv
+      .filter(i => (S.scanned[i.item] || 0) > 0)
+      .map(i => ({
+        item: i.item,
+        bez:  i.bez || S.ml?.i?.[i.item]?.n || '',
+        qoh:  S.ml?.i?.[i.item]?.l?.[S.wh]?.qoh ?? null,
+        sc:   S.scanned[i.item],
+      })),
+    ...extra.map(([k, v]) => ({
+      item: k,
+      bez:  S.ml?.i?.[k]?.n || '',
+      qoh:  null,
+      sc:   v,
+    })),
+  ].map(i => {
+    const qohCell = i.qoh !== null
+      ? `<td style="text-align:center">${i.qoh}</td>`
+      : `<td style="text-align:center;color:var(--muted)">—</td>`;
+    return `<tr>
+      <td>${i.item}</td>
+      <td style="font-size:12px">${i.bez}</td>
+      ${qohCell}
+      <td style="text-align:center"><input type="number" min="0" value="${i.sc}" style="${inpStyle}" onchange="updateScanned('${i.item}',this.value)"></td>
+    </tr>`;
+  }).join('');
+
   div.innerHTML = `
     <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px;text-align:center">
       <div><div style="font-size:28px;font-weight:800;color:var(--green)">${scannedStk}</div><div style="font-size:11px;color:var(--muted)">Gezählt Stk.</div></div>
@@ -1062,7 +1091,25 @@ function renderFinish() {
         <tbody>${xtraRows}</tbody>
       </table>
     </details>` : ''}
+
+    ${scannedRows ? `
+    <details style="margin-top:8px">
+      <summary style="font-weight:600;color:var(--green)">Gezählte Artikel (${Object.keys(S.scanned).length} Pos.)</summary>
+      <table class="rtable" style="margin-top:8px">
+        <thead><tr><th>Item-Nr.</th><th>Bezeichnung</th><th style="text-align:center">QOH</th><th style="text-align:center">Gezählt</th></tr></thead>
+        <tbody>${scannedRows}</tbody>
+      </table>
+    </details>` : ''}
   `;
+}
+
+function updateScanned(item, val) {
+  const n = Math.max(0, parseInt(val) || 0);
+  if (n === 0) delete S.scanned[item];
+  else S.scanned[item] = n;
+  saveSession();
+  updateUI();
+  renderFinish();
 }
 
 // ── DOWNLOAD XLSX ─────────────────────────────────────────────────────────────
