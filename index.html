@@ -544,6 +544,9 @@ let pendingCode = null;
 // Debounce
 let lastCode = null, lastCodeTime = 0;
 
+// Scanner auto-reopen after qty confirm
+let scannerAutoReopen = false;
+
 // ── INIT ─────────────────────────────────────────────────────────────────────
 (async () => {
   // Load masterlist from GitHub Pages
@@ -701,10 +704,18 @@ function stopScan() {
 }
 
 function handleCode(code) {
+  // Nur 7- oder 10-stellige Zahlen akzeptieren
+  if (!/^(\d{7}|\d{10})$/.test(code)) return;
+
   const now = Date.now();
   if (code === lastCode && now - lastCodeTime < 2500) return;
   if (document.getElementById('qty-modal').classList.contains('open')) return;
   lastCode = code; lastCodeTime = now;
+
+  // Scanner schliessen, danach automatisch wieder öffnen
+  scannerAutoReopen = true;
+  stopScan();
+
   const invItem = S.inv?.find(i => i.item === code);
   const name = invItem?.bez || S.ml?.i?.[code]?.n || '';
   document.getElementById('scan-hint').textContent = name ? `${code}  ·  ${name}` : `Erkannt: ${code}`;
@@ -765,10 +776,14 @@ function confirmQty() {
   S.scanned[pendingCode] = (S.scanned[pendingCode] || 0) + add;
   saveSession();
   updateUI();
+  const reopen = scannerAutoReopen;
+  scannerAutoReopen = false;
   closeQtyModal();
+  if (reopen) toggleScan();   // Scanner automatisch wieder öffnen
 }
 
 function closeQtyModal() {
+  scannerAutoReopen = false;  // bei Abbrechen: kein Auto-Reopen
   document.getElementById('qty-modal').classList.remove('open');
   pendingCode = null;
   lastCode    = null;
