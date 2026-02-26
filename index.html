@@ -13,8 +13,8 @@
   <script src="https://unpkg.com/@zxing/library@0.18.6/umd/index.min.js"></script>
   <!-- SheetJS: read + write xlsx in browser -->
   <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
-  <!-- QRCode.js: generate QR codes -->
-  <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+  <!-- QRCode.js: generate QR codes (qrcodejs via cdnjs) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -252,8 +252,8 @@
     .rtable td { padding: 9px 6px; border-bottom: 1px solid var(--bg); }
     .rtable tr:last-child td { border-bottom: none; }
 
-    /* ── QR export image ── */
-    #qr-img { display: block; margin: 16px auto; border-radius: 8px; max-width: 300px; width: 100%; }
+    /* ── QR export container ── */
+    #qr-container img, #qr-container canvas { border-radius: 8px; max-width: 100%; }
 
     /* ── video QR modal ── */
     #video-qr { width: 100%; border-radius: 12px; display: block; }
@@ -404,7 +404,7 @@
     <button class="btn btn-outline" onclick="showExportQR()">
       🔲 QR-Code anzeigen
     </button>
-    <img id="qr-img" class="hidden" style="display:block;margin:16px auto;border-radius:8px;max-width:300px;width:100%">
+    <div id="qr-container" class="hidden" style="display:flex;justify-content:center;margin:16px 0"></div>
     <p id="qr-msg" style="font-size:14px;text-align:center;margin-top:8px;font-weight:600"></p>
   </div>
 </div>
@@ -849,16 +849,16 @@ function closeSSModal() {
 
 // ── QR EXPORT ────────────────────────────────────────────────────────────────
 async function showExportQR() {
-  const img = document.getElementById('qr-img');
-  const msg = document.getElementById('qr-msg');
-  img.classList.add('hidden');
+  const container = document.getElementById('qr-container');
+  const msg       = document.getElementById('qr-msg');
+  container.innerHTML = '';
+  container.classList.add('hidden');
   msg.style.color = 'var(--muted)';
   msg.textContent = 'Generiere …';
 
-  // Prüfen ob QRCode-Bibliothek geladen ist
   if (typeof QRCode === 'undefined') {
     msg.style.color = 'var(--red)';
-    msg.textContent = 'QR-Bibliothek fehlt – bitte Seite neu laden.';
+    msg.textContent = 'QR-Bibliothek nicht geladen – Internet prüfen und Seite neu laden.';
     return;
   }
 
@@ -876,23 +876,24 @@ async function showExportQR() {
     payload = 'RAW:' + btoa(unescape(encodeURIComponent(json)));
   }
 
-  const size    = payload.length;
-  const nItems  = Object.keys(S.scanned || {}).length;
+  const size   = payload.length;
+  const nItems = Object.keys(S.scanned || {}).length;
 
   if (size > 2953) {
     msg.style.color = 'var(--red)';
-    msg.textContent = `Zu gross (${size} Zeichen, max. 2953) – bitte Datei teilen.`;
+    msg.textContent = `Zu gross (${size} Zeichen, max. 2953) – Datei teilen.`;
     return;
   }
 
   try {
-    const dataUrl = await QRCode.toDataURL(payload, {
-      width:         Math.min(300, window.innerWidth - 60),
-      margin:        2,
-      errorCorrectionLevel: 'M',
+    const qrSize = Math.min(280, window.innerWidth - 60);
+    new QRCode(container, {
+      text:         payload,
+      width:        qrSize,
+      height:       qrSize,
+      correctLevel: QRCode.CorrectLevel.M,
     });
-    img.src = dataUrl;
-    img.classList.remove('hidden');
+    container.classList.remove('hidden');
     msg.style.color = 'var(--muted)';
     msg.textContent = `${nItems} Artikel · ${size} Zeichen`;
   } catch (e) {
