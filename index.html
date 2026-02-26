@@ -10,7 +10,7 @@
   <link rel="manifest" href="manifest.json">
 
   <!-- ZXing: Code128 + QR on iOS & Android -->
-  <script src="https://unpkg.com/@zxing/library@0.20.0/umd/index.min.js"></script>
+  <script src="https://unpkg.com/@zxing/library@0.18.6/umd/index.min.js"></script>
   <!-- SheetJS: read + write xlsx in browser -->
   <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
   <!-- QRCode.js: generate QR codes -->
@@ -644,12 +644,9 @@ async function toggleScan() {
   if (!reader1D) reader1D = new ZXing.BrowserMultiFormatReader();
 
   try {
-    const devices = await ZXing.BrowserCodeReader.listVideoInputDevices();
-    const cam = devices.find(d => /back|rear|environment/i.test(d.label))
-                || devices[devices.length - 1];
-
-    await reader1D.decodeFromVideoDevice(
-      cam?.deviceId ?? null, 'video-main',
+    await reader1D.decodeFromConstraints(
+      { video: { facingMode: { ideal: 'environment' } } },
+      'video-main',
       (result) => { if (result) handleCode(result.getText()); }
     );
   } catch (e) {
@@ -788,10 +785,9 @@ async function startSearchScan() {
 
   if (!readerSS) readerSS = new ZXing.BrowserMultiFormatReader();
   try {
-    const devices = await ZXing.BrowserCodeReader.listVideoInputDevices();
-    const cam = devices.find(d => /back|rear|environment/i.test(d.label))
-                || devices[devices.length - 1];
-    await readerSS.decodeFromVideoDevice(cam?.deviceId ?? null, 'video-ss',
+    await readerSS.decodeFromConstraints(
+      { video: { facingMode: { ideal: 'environment' } } },
+      'video-ss',
       (result) => {
         if (!result) return;
         readerSS.reset();
@@ -858,11 +854,9 @@ async function startQRImport() {
 
   if (!readerQR) readerQR = new ZXing.BrowserMultiFormatReader();
   try {
-    const devices = await ZXing.BrowserCodeReader.listVideoInputDevices();
-    const cam = devices.find(d => /back|rear|environment/i.test(d.label))
-                || devices[devices.length - 1];
-
-    await readerQR.decodeFromVideoDevice(cam?.deviceId ?? null, 'video-qr',
+    await readerQR.decodeFromConstraints(
+      { video: { facingMode: { ideal: 'environment' } } },
+      'video-qr',
       async (result) => {
         if (!result) return;
         readerQR.reset();
