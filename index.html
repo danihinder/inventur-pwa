@@ -258,7 +258,7 @@
 <body>
 
 <header>
-  <h1>📦 Inventur Scanner <span style="font-size:11px;font-weight:400;opacity:.55">Build 14</span></h1>
+  <h1>📦 Inventur Scanner <span style="font-size:11px;font-weight:400;opacity:.55">Build 15</span></h1>
   <p id="hdr-sub">Keine Inventurdatei geladen</p>
 </header>
 
@@ -281,19 +281,11 @@
   <!-- SCAN CARD (shown when file loaded) -->
   <div class="hidden" id="scan-card">
     <div class="stats">
-      <div class="stat ok">   <div class="n" id="cnt-ok">0</div>   <div class="lbl">Gezählt</div>
-        <div id="cnt-ok-stk" style="font-size:12px;font-weight:700;color:var(--green);min-height:16px"></div>
-      </div>
-      <div class="stat miss"> <div class="n" id="cnt-miss">0</div> <div class="lbl">Fehlend</div>
-        <div id="cnt-miss-stk" style="font-size:12px;font-weight:700;color:var(--red);min-height:16px"></div>
-      </div>
-      <div class="stat xtra"> <div class="n" id="cnt-xtra">0</div> <div class="lbl">Extra</div>    </div>
+      <div class="stat ok">   <div class="n" id="cnt-ok-stk">0</div>   <div class="lbl">Gezählt</div>  </div>
+      <div class="stat miss"> <div class="n" id="cnt-miss-stk">0</div> <div class="lbl">Fehlend</div>  </div>
+      <div class="stat xtra"> <div class="n" id="cnt-xtra-stk">0</div> <div class="lbl">Extra</div>    </div>
     </div>
     <div class="card" style="padding:14px">
-      <div style="font-size:11px;color:var(--muted);margin-bottom:3px">Positionen</div>
-      <div class="pbar"><div class="pfill" id="pfill-pos" style="width:0%"></div></div>
-      <div class="ptext" id="ptext-pos">0 von 0</div>
-      <div style="font-size:11px;color:var(--muted);margin-top:10px;margin-bottom:3px">Stück</div>
       <div class="pbar"><div class="pfill" id="pfill-stk" style="width:0%"></div></div>
       <div class="ptext" id="ptext-stk">—</div>
       <button class="btn btn-primary" id="btn-cam" style="margin-top:12px" onclick="toggleScan()">
@@ -638,17 +630,12 @@ function updateUI() {
       scannedQoh += Math.min(sc, qoh);
     }
   }
-  const missing = total - ok;
-  const extra   = Object.keys(S.scanned).filter(k => !S.inv.find(i => i.item === k)).length;
+  const extraItems = Object.keys(S.scanned).filter(k => !S.inv.find(i => i.item === k));
+  const extraStk   = extraItems.reduce((s, k) => s + (S.scanned[k] || 0), 0);
 
-  document.getElementById('cnt-ok').textContent       = ok;
-  document.getElementById('cnt-ok-stk').textContent   = scannedQoh > 0 ? `${scannedQoh} Stk.` : '';
-  document.getElementById('cnt-miss').textContent     = missing;
-  document.getElementById('cnt-miss-stk').textContent = totalDeficit > 0 ? `${totalDeficit} Stk.` : '';
-  document.getElementById('cnt-xtra').textContent     = extra;
-
-  document.getElementById('pfill-pos').style.width = total ? (ok / total * 100) + '%' : '0%';
-  document.getElementById('ptext-pos').textContent = `${ok} von ${total} Pos.`;
+  document.getElementById('cnt-ok-stk').textContent   = scannedQoh;
+  document.getElementById('cnt-miss-stk').textContent = totalDeficit;
+  document.getElementById('cnt-xtra-stk').textContent = extraStk;
 
   document.getElementById('pfill-stk').style.width = totalQoh ? (scannedQoh / totalQoh * 100) + '%' : '0%';
   document.getElementById('ptext-stk').textContent = totalQoh ? `${scannedQoh} von ${totalQoh} Stk.` : '—';
