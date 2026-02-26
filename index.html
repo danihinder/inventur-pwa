@@ -258,7 +258,7 @@
 <body>
 
 <header>
-  <h1>📦 Inventur Scanner <span style="font-size:11px;font-weight:400;opacity:.55">Build 12</span></h1>
+  <h1>📦 Inventur Scanner <span style="font-size:11px;font-weight:400;opacity:.55">Build 13</span></h1>
   <p id="hdr-sub">Keine Inventurdatei geladen</p>
 </header>
 
@@ -282,12 +282,18 @@
   <div class="hidden" id="scan-card">
     <div class="stats">
       <div class="stat ok">   <div class="n" id="cnt-ok">0</div>   <div class="lbl">Gezählt</div>  </div>
-      <div class="stat miss"> <div class="n" id="cnt-miss">0</div> <div class="lbl">Fehlend</div>  </div>
+      <div class="stat miss"> <div class="n" id="cnt-miss">0</div> <div class="lbl">Fehlend</div>
+        <div id="cnt-miss-stk" style="font-size:12px;font-weight:700;color:var(--red);min-height:16px"></div>
+      </div>
       <div class="stat xtra"> <div class="n" id="cnt-xtra">0</div> <div class="lbl">Extra</div>    </div>
     </div>
     <div class="card" style="padding:14px">
-      <div class="pbar"><div class="pfill" id="pfill" style="width:0%"></div></div>
-      <div class="ptext" id="ptext">0 von 0</div>
+      <div style="font-size:11px;color:var(--muted);margin-bottom:3px">Positionen</div>
+      <div class="pbar"><div class="pfill" id="pfill-pos" style="width:0%"></div></div>
+      <div class="ptext" id="ptext-pos">0 von 0</div>
+      <div style="font-size:11px;color:var(--muted);margin-top:10px;margin-bottom:3px">Stück</div>
+      <div class="pbar"><div class="pfill" id="pfill-stk" style="width:0%"></div></div>
+      <div class="ptext" id="ptext-stk">—</div>
       <button class="btn btn-primary" id="btn-cam" style="margin-top:12px" onclick="toggleScan()">
         📷 Scannen starten
       </button>
@@ -617,21 +623,32 @@ function showScanCard() {
 function updateUI() {
   if (!S.inv) return;
   const total = S.inv.length;
-  let ok = 0;
+  let ok = 0, totalQoh = 0, scannedQoh = 0, totalDeficit = 0;
   for (const i of S.inv) {
     const sc     = S.scanned[i.item] || 0;
     const qoh    = S.ml?.i?.[i.item]?.l?.[S.wh]?.qoh ?? null;
-    const target = qoh !== null ? qoh : 1;   // kein Masterlist-Eintrag → mind. 1 scannen
-    if (sc >= target) ok++;
+    const target = qoh !== null ? qoh : 1;
+    const deficit = Math.max(0, target - sc);
+    if (deficit === 0) ok++;
+    else totalDeficit += deficit;
+    if (qoh !== null) {
+      totalQoh   += qoh;
+      scannedQoh += Math.min(sc, qoh);
+    }
   }
   const missing = total - ok;
   const extra   = Object.keys(S.scanned).filter(k => !S.inv.find(i => i.item === k)).length;
 
-  document.getElementById('cnt-ok').textContent   = ok;
-  document.getElementById('cnt-miss').textContent = missing;
-  document.getElementById('cnt-xtra').textContent = extra;
-  document.getElementById('pfill').style.width    = total ? (ok / total * 100) + '%' : '0%';
-  document.getElementById('ptext').textContent    = `${ok} von ${total} Positionen`;
+  document.getElementById('cnt-ok').textContent       = ok;
+  document.getElementById('cnt-miss').textContent     = missing;
+  document.getElementById('cnt-xtra').textContent     = extra;
+  document.getElementById('cnt-miss-stk').textContent = totalDeficit > 0 ? `${totalDeficit} Stk.` : '';
+
+  document.getElementById('pfill-pos').style.width = total ? (ok / total * 100) + '%' : '0%';
+  document.getElementById('ptext-pos').textContent = `${ok} von ${total} Pos.`;
+
+  document.getElementById('pfill-stk').style.width = totalQoh ? (scannedQoh / totalQoh * 100) + '%' : '0%';
+  document.getElementById('ptext-stk').textContent = totalQoh ? `${scannedQoh} von ${totalQoh} Stk.` : '—';
 
   const sub = document.getElementById('hdr-sub');
   sub.textContent = S.wh
