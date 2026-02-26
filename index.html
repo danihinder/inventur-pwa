@@ -668,7 +668,9 @@ function handleCode(code) {
   if (code === lastCode && now - lastCodeTime < 2500) return;
   if (document.getElementById('qty-modal').classList.contains('open')) return;
   lastCode = code; lastCodeTime = now;
-  document.getElementById('scan-hint').textContent = 'Erkannt: ' + code;
+  const invItem = S.inv?.find(i => i.item === code);
+  const name = invItem?.bez || S.ml?.i?.[code]?.n || '';
+  document.getElementById('scan-hint').textContent = name ? `${code}  ·  ${name}` : `Erkannt: ${code}`;
   if (navigator.vibrate) navigator.vibrate(60);
   openQtyModal(code);
 }
