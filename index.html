@@ -129,12 +129,11 @@
     /* ── SCANNER ── */
     #scanner-wrap {
       position: relative;
-      border-radius: 14px;
+      border-radius: 12px;
       overflow: hidden;
       background: #000;
-      aspect-ratio: 4/3;
     }
-    #video-main { width: 100%; height: 100%; object-fit: cover; display: block; }
+    #video-main { width: 100%; display: block; }
     .scan-overlay {
       position: absolute; inset: 0;
       display: flex; align-items: center; justify-content: center;
@@ -341,18 +340,6 @@
       </button>
     </div>
 
-    <!-- Camera -->
-    <div class="card hidden" id="cam-card" style="padding:10px">
-      <div id="scanner-wrap">
-        <video id="video-main" playsinline muted autoplay></video>
-        <div class="scan-overlay">
-          <div class="scan-box"></div>
-          <div class="scan-line"></div>
-        </div>
-      </div>
-      <p id="scan-hint">Barcode mittig in den Rahmen halten …</p>
-    </div>
-
     <!-- Manual entry -->
     <div class="card">
       <h2 style="margin-bottom:10px">Manuelle Eingabe</h2>
@@ -472,6 +459,25 @@
 
     <button class="btn btn-success" onclick="confirmQty()">✓ Hinzufügen</button>
     <button class="btn btn-outline" style="margin-top:10px" onclick="closeQtyModal()">Abbrechen</button>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     MAIN SCAN MODAL (inventory)
+══════════════════════════════════════════ -->
+<div class="modal-bg" id="scan-modal">
+  <div class="modal">
+    <div id="scanner-wrap">
+      <video id="video-main" playsinline muted autoplay></video>
+      <div class="scan-overlay">
+        <div class="scan-box"></div>
+        <div class="scan-line"></div>
+      </div>
+    </div>
+    <p id="scan-hint" style="text-align:center;color:var(--muted);font-size:13px;padding:10px 0 4px">
+      Barcode mittig in den Rahmen halten …
+    </p>
+    <button class="btn btn-outline" style="margin-top:4px" onclick="stopScan()">⏹ Stoppen</button>
   </div>
 </div>
 
@@ -669,19 +675,13 @@ function updateUI() {
 
 // ── MAIN SCANNER ─────────────────────────────────────────────────────────────
 async function toggleScan() {
-  const btn     = document.getElementById('btn-cam');
-  const camCard = document.getElementById('cam-card');
-  const running = camCard && !camCard.classList.contains('hidden');
+  const modal = document.getElementById('scan-modal');
+  if (modal.classList.contains('open')) { stopScan(); return; }
 
-  if (running) {
-    stopMainScan();
-    return;
-  }
-  camCard.classList.remove('hidden');
-  btn.textContent = '⏹ Scannen stoppen';
+  modal.classList.add('open');
+  document.getElementById('btn-cam').textContent = '⏹ Scannen stoppen';
 
   if (!reader1D) reader1D = new ZXing.BrowserMultiFormatReader();
-
   try {
     await reader1D.decodeFromConstraints(
       { video: { facingMode: { ideal: 'environment' } } },
@@ -690,13 +690,13 @@ async function toggleScan() {
     );
   } catch (e) {
     alert('Kamera-Fehler: ' + e.message);
-    stopMainScan();
+    stopScan();
   }
 }
 
-function stopMainScan() {
+function stopScan() {
   if (reader1D) { try { reader1D.reset(); } catch (_) {} }
-  document.getElementById('cam-card').classList.add('hidden');
+  document.getElementById('scan-modal').classList.remove('open');
   document.getElementById('btn-cam').textContent = '📷 Scannen starten';
 }
 
@@ -725,7 +725,7 @@ function onManualAdd() {
 function openQtyModal(code) {
   pendingCode = code;
   const invItem = S.inv?.find(i => i.item === code);
-  const name    = invItem ? invItem.bez : '(nicht in Inventurliste)';
+  const name    = invItem?.bez || S.ml?.i?.[code]?.n || '(nicht in Inventurliste)';
   const current = S.scanned[code] || 0;
 
   let minV = '—', qohV = '—';
@@ -1064,7 +1064,7 @@ async function downloadXLSX() {
 // ── RESET ────────────────────────────────────────────────────────────────────
 function resetSession() {
   if (!confirm('Aktuelle Inventur löschen und neu starten?')) return;
-  stopMainScan();
+  stopScan();
   S.inv = S.fdata = S.fdataB64 = S.fname = S.wh = S.whName = null;
   S.scanned = {};
   localStorage.removeItem(SESSION_KEY);
