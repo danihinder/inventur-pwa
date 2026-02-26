@@ -1,0 +1,1060 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+  <meta name="theme-color" content="#1a56db">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>Inventur Scanner</title>
+  <link rel="manifest" href="manifest.json">
+
+  <!-- ZXing: Code128 + QR on iOS & Android -->
+  <script src="https://unpkg.com/@zxing/library@0.20.0/umd/index.min.js"></script>
+  <!-- SheetJS: read + write xlsx in browser -->
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+  <!-- QRCode.js: generate QR codes -->
+  <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --blue:   #1a56db;
+      --green:  #38a169;
+      --red:    #e53e3e;
+      --orange: #dd6b20;
+      --bg:     #f0f4f8;
+      --card:   #ffffff;
+      --border: #e2e8f0;
+      --muted:  #718096;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg);
+      color: #1a202c;
+      min-height: 100dvh;
+      overflow-x: hidden;
+    }
+
+    /* ── HEADER ── */
+    header {
+      background: var(--blue);
+      color: #fff;
+      padding: 14px 16px 12px;
+      text-align: center;
+      position: sticky;
+      top: 0;
+      z-index: 60;
+    }
+    header h1 { font-size: 17px; font-weight: 700; }
+    header p  { font-size: 12px; opacity: .75; margin-top: 2px; }
+
+    /* ── NAV ── */
+    nav {
+      position: fixed;
+      bottom: 0; left: 0; right: 0;
+      background: var(--card);
+      border-top: 1px solid var(--border);
+      display: flex;
+      z-index: 60;
+      padding-bottom: env(safe-area-inset-bottom, 0px);
+    }
+    nav button {
+      flex: 1; padding: 10px 4px 8px;
+      background: none; border: none;
+      font-size: 11px; color: var(--muted);
+      display: flex; flex-direction: column; align-items: center; gap: 3px;
+      cursor: pointer; -webkit-tap-highlight-color: transparent;
+    }
+    nav button .ico { font-size: 22px; line-height: 1; }
+    nav button.active { color: var(--blue); }
+
+    /* ── PAGES ── */
+    .page { display: none; padding: 14px 14px 90px; }
+    .page.active { display: block; }
+
+    /* ── CARD ── */
+    .card {
+      background: var(--card);
+      border-radius: 14px;
+      padding: 16px;
+      margin-bottom: 14px;
+      box-shadow: 0 1px 4px rgba(0,0,0,.08);
+    }
+    .card h2 { font-size: 16px; font-weight: 700; margin-bottom: 10px; }
+
+    /* ── BUTTONS ── */
+    .btn {
+      display: block; width: 100%;
+      padding: 14px 16px;
+      border-radius: 12px; border: none;
+      font-size: 16px; font-weight: 600;
+      cursor: pointer; text-align: center;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .btn + .btn { margin-top: 10px; }
+    .btn-primary { background: var(--blue);   color: #fff; }
+    .btn-success { background: var(--green);  color: #fff; }
+    .btn-danger  { background: var(--red);    color: #fff; }
+    .btn-outline { background: #fff; color: var(--blue); border: 2px solid var(--blue); }
+    .btn-sm      { padding: 10px 14px; font-size: 14px; }
+
+    /* ── STATS ── */
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      margin-bottom: 14px;
+    }
+    .stat {
+      background: var(--card);
+      border-radius: 12px;
+      padding: 12px 8px;
+      text-align: center;
+      box-shadow: 0 1px 3px rgba(0,0,0,.07);
+    }
+    .stat .n  { font-size: 30px; font-weight: 800; line-height: 1; }
+    .stat .lbl{ font-size: 11px; color: var(--muted); margin-top: 3px; }
+    .stat.ok   .n { color: var(--green); }
+    .stat.miss .n { color: var(--red);   }
+    .stat.xtra .n { color: var(--orange);}
+
+    /* ── PROGRESS ── */
+    .pbar { height: 8px; background: var(--border); border-radius: 4px; overflow: hidden; }
+    .pfill{ height: 100%; background: var(--green); border-radius: 4px; transition: width .4s; }
+    .ptext{ text-align: center; font-size: 12px; color: var(--muted); margin-top: 5px; }
+
+    /* ── SCANNER ── */
+    #scanner-wrap {
+      position: relative;
+      border-radius: 14px;
+      overflow: hidden;
+      background: #000;
+      aspect-ratio: 4/3;
+    }
+    #video-main { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .scan-overlay {
+      position: absolute; inset: 0;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .scan-box {
+      width: 60%; aspect-ratio: 2/1;
+      border: 3px solid rgba(255,255,255,.85);
+      border-radius: 8px;
+      box-shadow: 0 0 0 9999px rgba(0,0,0,.45);
+    }
+    .scan-line {
+      position: absolute;
+      left: 20%; right: 20%;
+      height: 2px;
+      background: rgba(255, 80, 80, .8);
+      animation: scanline 2s ease-in-out infinite;
+    }
+    @keyframes scanline {
+      0%   { top: 35%; }
+      50%  { top: 62%; }
+      100% { top: 35%; }
+    }
+    #scan-hint {
+      text-align: center;
+      color: var(--muted);
+      font-size: 13px;
+      padding: 10px 0 4px;
+    }
+
+    /* ── MODAL ── */
+    .modal-bg {
+      display: none;
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,.55);
+      z-index: 200;
+      align-items: flex-end;
+    }
+    .modal-bg.open { display: flex; }
+    .modal {
+      background: var(--card);
+      border-radius: 22px 22px 0 0;
+      padding: 24px 20px;
+      width: 100%;
+      padding-bottom: calc(24px + env(safe-area-inset-bottom, 0px));
+    }
+    .modal-title   { font-size: 20px; font-weight: 800; margin-bottom: 2px; }
+    .modal-sub     { font-size: 13px; color: var(--muted); margin-bottom: 18px; }
+
+    /* info grid in modal */
+    .info-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      background: var(--bg);
+      border-radius: 12px;
+      padding: 12px;
+      margin-bottom: 18px;
+    }
+    .info-cell { text-align: center; }
+    .info-cell .lbl { font-size: 11px; color: var(--muted); margin-bottom: 4px; }
+    .info-cell .val { font-size: 24px; font-weight: 800; }
+    .val-ok     { color: var(--green); }
+    .val-warn   { color: var(--orange); }
+    .val-neutral{ color: #2d3748; }
+
+    /* qty control */
+    .qty-row {
+      display: flex; align-items: center;
+      gap: 14px; margin: 4px 0 8px;
+    }
+    .qty-btn {
+      width: 58px; height: 58px;
+      border-radius: 50%; border: none;
+      font-size: 30px; font-weight: 300;
+      cursor: pointer; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .qty-btn.minus { background: #fed7d7; color: var(--red);   }
+    .qty-btn.plus  { background: #c6f6d5; color: var(--green); }
+    .qty-input-wrap { flex: 1; text-align: center; }
+    #qty-val {
+      width: 90px; height: 58px;
+      border: 2px solid var(--border); border-radius: 12px;
+      text-align: center; font-size: 30px; font-weight: 700;
+      color: var(--blue);
+    }
+    .qty-total {
+      text-align: center; font-size: 13px;
+      color: var(--muted); margin: 6px 0 18px;
+    }
+    .qty-total strong { font-size: 20px; color: #1a202c; }
+
+    /* ── SEARCH ── */
+    .search-row { display: flex; gap: 8px; margin-bottom: 12px; }
+    .search-row input {
+      flex: 1; padding: 12px 14px;
+      border: 2px solid var(--border); border-radius: 12px;
+      font-size: 16px;
+    }
+    .search-row input:focus { outline: none; border-color: var(--blue); }
+    .search-row button {
+      padding: 12px 16px;
+      background: var(--blue); color: #fff;
+      border: none; border-radius: 12px;
+      font-size: 20px; cursor: pointer;
+    }
+
+    /* result table */
+    .rtable { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .rtable th {
+      text-align: left; padding: 8px 6px;
+      border-bottom: 2px solid var(--border);
+      color: var(--muted); font-weight: 600;
+    }
+    .rtable td { padding: 9px 6px; border-bottom: 1px solid var(--bg); }
+    .rtable tr:last-child td { border-bottom: none; }
+
+    /* ── QR export canvas ── */
+    #qr-canvas { display: block; margin: 16px auto; border-radius: 8px; }
+
+    /* ── video QR modal ── */
+    #video-qr { width: 100%; border-radius: 12px; display: block; }
+
+    /* ── misc ── */
+    .hidden { display: none !important; }
+    .divider { border: none; border-top: 1px solid var(--border); margin: 18px 0; }
+    .tag {
+      display: inline-block; padding: 3px 10px;
+      border-radius: 999px; font-size: 12px; font-weight: 600;
+    }
+    .tag-ok   { background: #c6f6d5; color: #276749; }
+    .tag-miss { background: #fed7d7; color: #742a2a; }
+    .tag-xtra { background: #fefcbf; color: #744210; }
+
+    details summary { cursor: pointer; user-select: none; padding: 6px 0; }
+    details[open] summary { margin-bottom: 8px; }
+  </style>
+</head>
+
+<body>
+
+<header>
+  <h1>📦 Inventur Scanner</h1>
+  <p id="hdr-sub">Keine Inventurdatei geladen</p>
+</header>
+
+<!-- ═══════════════════ PAGE: INVENTUR ═══════════════════ -->
+<div class="page active" id="page-inv">
+
+  <!-- LOAD CARD (shown when no file loaded) -->
+  <div class="card" id="load-card">
+    <h2>Inventurdatei laden</h2>
+    <p style="font-size:13px;color:var(--muted);margin-bottom:14px">
+      "Inventory CHU.xxxx Kundenname.xlsx" aus der E-Mail laden.
+    </p>
+    <button class="btn btn-primary" onclick="document.getElementById('file-inp').click()">
+      📂 XLSX aus E-Mail öffnen
+    </button>
+    <input type="file" id="file-inp" accept=".xlsx,.xls" class="hidden" onchange="onFileLoad(this)">
+    <p id="load-msg" style="font-size:13px;color:var(--muted);margin-top:10px"></p>
+  </div>
+
+  <!-- SCAN CARD (shown when file loaded) -->
+  <div class="hidden" id="scan-card">
+    <div class="stats">
+      <div class="stat ok">   <div class="n" id="cnt-ok">0</div>   <div class="lbl">Gezählt</div>  </div>
+      <div class="stat miss"> <div class="n" id="cnt-miss">0</div> <div class="lbl">Fehlend</div>  </div>
+      <div class="stat xtra"> <div class="n" id="cnt-xtra">0</div> <div class="lbl">Extra</div>    </div>
+    </div>
+    <div class="card" style="padding:14px">
+      <div class="pbar"><div class="pfill" id="pfill" style="width:0%"></div></div>
+      <div class="ptext" id="ptext">0 von 0</div>
+      <button class="btn btn-primary" id="btn-cam" style="margin-top:12px" onclick="toggleScan()">
+        📷 Scannen starten
+      </button>
+    </div>
+
+    <!-- Camera -->
+    <div class="card hidden" id="cam-card" style="padding:10px">
+      <div id="scanner-wrap">
+        <video id="video-main" playsinline muted autoplay></video>
+        <div class="scan-overlay">
+          <div class="scan-box"></div>
+          <div class="scan-line"></div>
+        </div>
+      </div>
+      <p id="scan-hint">Barcode mittig in den Rahmen halten …</p>
+    </div>
+
+    <!-- Manual entry -->
+    <div class="card">
+      <h2 style="margin-bottom:10px">Manuelle Eingabe</h2>
+      <div class="search-row">
+        <input type="text" id="manual-inp" placeholder="Teilenummer …" inputmode="numeric"
+               onkeyup="if(event.key==='Enter')onManualAdd()">
+        <button onclick="onManualAdd()">➕</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════ PAGE: TEILSUCHE ═══════════════════ -->
+<div class="page hidden" id="page-suche">
+  <div class="card">
+    <h2>🔍 Teilsuche</h2>
+    <p style="font-size:13px;color:var(--muted);margin-bottom:12px">
+      Wo liegt welche Menge? QOH = Bestand laut System · MIN = Soll
+    </p>
+    <div class="search-row">
+      <input type="text" id="srch-inp" placeholder="Teilenummer …" inputmode="numeric"
+             onkeyup="if(event.key==='Enter')doSearch()">
+      <button onclick="doSearch()">🔍</button>
+    </div>
+    <button class="btn btn-outline btn-sm" style="margin-bottom:14px" onclick="startSearchScan()">
+      📷 Barcode scannen
+    </button>
+    <div id="srch-result"></div>
+  </div>
+</div>
+
+<!-- ═══════════════════ PAGE: MERGE ═══════════════════ -->
+<div class="page hidden" id="page-merge">
+  <div class="card">
+    <h2>🤝 Kollegen-Scan zusammenführen</h2>
+    <p style="font-size:13px;color:var(--muted);margin-bottom:16px">
+      Kollege zeigt seinen QR-Code → du scannst ihn → Mengen werden addiert.
+    </p>
+    <button class="btn btn-primary" onclick="startQRImport()">
+      📷 QR-Code des Kollegen scannen
+    </button>
+
+    <hr class="divider">
+
+    <h2 style="margin-bottom:8px">Meinen Scan teilen</h2>
+    <p style="font-size:13px;color:var(--muted);margin-bottom:12px">
+      Kollege scannt diesen QR-Code mit der App.
+    </p>
+    <button class="btn btn-outline" onclick="showExportQR()">
+      🔲 QR-Code anzeigen
+    </button>
+    <canvas id="qr-canvas" class="hidden" width="280" height="280"></canvas>
+    <p id="qr-msg" style="font-size:12px;color:var(--muted);text-align:center;margin-top:8px"></p>
+  </div>
+</div>
+
+<!-- ═══════════════════ PAGE: ABSCHLUSS ═══════════════════ -->
+<div class="page hidden" id="page-finish">
+  <div class="card">
+    <h2>✅ Inventur abschliessen</h2>
+    <div id="finish-body" style="margin-top:8px"></div>
+    <button class="btn btn-success" style="margin-top:16px" onclick="downloadXLSX()">
+      ⬇️ Ausgefüllte XLSX herunterladen
+    </button>
+    <p style="font-size:12px;color:var(--muted);text-align:center;margin-top:8px">
+      Anschliessend als Mail-Anhang an Materialbewirtschafter senden
+    </p>
+    <hr class="divider">
+    <button class="btn btn-danger btn-sm" onclick="resetSession()">
+      🗑 Neue Inventur starten
+    </button>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     BOTTOM NAV
+══════════════════════════════════════════ -->
+<nav>
+  <button class="active" id="nav-inv"    onclick="showPage('inv',    this)"><span class="ico">📦</span>Inventur</button>
+  <button               id="nav-suche"  onclick="showPage('suche',  this)"><span class="ico">🔍</span>Suche</button>
+  <button               id="nav-merge"  onclick="showPage('merge',  this)"><span class="ico">🤝</span>Merge</button>
+  <button               id="nav-finish" onclick="showPage('finish', this)"><span class="ico">✅</span>Abschluss</button>
+</nav>
+
+<!-- ══════════════════════════════════════════
+     QUANTITY MODAL
+══════════════════════════════════════════ -->
+<div class="modal-bg" id="qty-modal">
+  <div class="modal">
+    <div class="modal-title" id="m-nr">—</div>
+    <div class="modal-sub"   id="m-name">—</div>
+
+    <div class="info-grid">
+      <div class="info-cell">
+        <div class="lbl">Bisher</div>
+        <div class="val val-neutral" id="m-cur">0</div>
+      </div>
+      <div class="info-cell">
+        <div class="lbl">Soll (MIN)</div>
+        <div class="val val-neutral" id="m-min">—</div>
+      </div>
+      <div class="info-cell">
+        <div class="lbl">System (QOH)</div>
+        <div class="val val-neutral" id="m-qoh">—</div>
+      </div>
+    </div>
+
+    <p style="text-align:center;font-size:14px;color:var(--muted);margin-bottom:8px">Jetzt hinzufügen:</p>
+    <div class="qty-row">
+      <button class="qty-btn minus" onclick="adjQty(-1)">−</button>
+      <div class="qty-input-wrap">
+        <input type="number" id="qty-val" value="1" min="1" max="999" onchange="refreshTotal()">
+      </div>
+      <button class="qty-btn plus"  onclick="adjQty(+1)">+</button>
+    </div>
+    <div class="qty-total">Neu total: <strong id="m-total">1</strong></div>
+
+    <button class="btn btn-success" onclick="confirmQty()">✓ Hinzufügen</button>
+    <button class="btn btn-outline" style="margin-top:10px" onclick="closeQtyModal()">Abbrechen</button>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     QR SCAN MODAL (import colleague)
+══════════════════════════════════════════ -->
+<div class="modal-bg" id="qr-modal">
+  <div class="modal">
+    <h2 style="margin-bottom:16px">QR-Code scannen</h2>
+    <video id="video-qr" playsinline muted autoplay></video>
+    <button class="btn btn-outline" style="margin-top:16px" onclick="closeQRModal()">Abbrechen</button>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     SEARCH SCAN MODAL
+══════════════════════════════════════════ -->
+<div class="modal-bg" id="ss-modal">
+  <div class="modal">
+    <h2 style="margin-bottom:16px">Barcode für Suche scannen</h2>
+    <video id="video-ss" playsinline muted autoplay></video>
+    <button class="btn btn-outline" style="margin-top:16px" onclick="closeSSModal()">Abbrechen</button>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     JAVASCRIPT
+══════════════════════════════════════════ -->
+<script>
+'use strict';
+
+// ── CONFIG ──────────────────────────────────────────────────────────────────
+const MASTERLIST_URL  = 'data/masterlist.json';
+const SESSION_KEY     = 'inventur_v1';
+
+// ── STATE ────────────────────────────────────────────────────────────────────
+const S = {
+  ml:        null,   // masterlist JSON
+  inv:       null,   // [{tag, item, bezeichnung, subinventory, rowIdx}]
+  wh:        null,   // "CHU.8678"
+  whName:    null,   // "Edubook"
+  fname:     null,   // original filename
+  fdata:     null,   // ArrayBuffer of original xlsx
+  fdataB64:  null,   // base64 of fdata (for localStorage)
+  scanned:   {},     // {itemNr: count}
+};
+
+// ── READERS ──────────────────────────────────────────────────────────────────
+let reader1D = null;  // main scanner
+let readerQR = null;  // QR import
+let readerSS = null;  // search scan
+
+// Pending item for qty modal
+let pendingCode = null;
+
+// Debounce
+let lastCode = null, lastCodeTime = 0;
+
+// ── INIT ─────────────────────────────────────────────────────────────────────
+(async () => {
+  // Load masterlist from GitHub Pages
+  try {
+    const r = await fetch(MASTERLIST_URL);
+    if (r.ok) S.ml = await r.json();
+  } catch (e) { console.warn('masterlist not loaded:', e); }
+
+  // Restore session
+  try {
+    const raw = localStorage.getItem(SESSION_KEY);
+    if (raw) {
+      const s = JSON.parse(raw);
+      Object.assign(S, {
+        inv:      s.inv,
+        wh:       s.wh,
+        whName:   s.whName,
+        fname:    s.fname,
+        fdataB64: s.fdataB64,
+        scanned:  s.scanned || {},
+      });
+      if (S.fdataB64) {
+        S.fdata = b64ToBuffer(S.fdataB64);
+      }
+      if (S.inv) showScanCard();
+    }
+  } catch (e) { console.warn('session restore failed:', e); }
+
+  updateUI();
+})();
+
+// ── PAGE NAVIGATION ──────────────────────────────────────────────────────────
+function showPage(name, btn) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
+  document.getElementById('page-' + name).classList.add('active');
+  btn.classList.add('active');
+  if (name === 'finish') renderFinish();
+}
+
+// ── FILE LOAD ────────────────────────────────────────────────────────────────
+async function onFileLoad(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const msg = document.getElementById('load-msg');
+  msg.textContent = 'Lade …';
+
+  try {
+    const buf = await file.arrayBuffer();
+    const wb  = XLSX.read(buf, { type: 'array' });
+
+    // Find inventory sheet
+    const wsName = wb.SheetNames.find(n => n.toLowerCase().includes('fnd_gfm'))
+                   || wb.SheetNames[0];
+    const ws  = wb.Sheets[wsName];
+    const raw = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
+
+    const hdr  = raw[0].map(h => String(h).trim());
+    const iTag = hdr.indexOf('Tag');
+    const iItm = hdr.indexOf('Item');
+    const iBez = hdr.indexOf('Bezeichnung');
+    const iSub = hdr.indexOf('Subinventory');
+
+    if (iItm < 0) throw new Error('Spalte "Item" nicht gefunden – falsche Datei?');
+
+    S.inv = [];
+    for (let r = 1; r < raw.length; r++) {
+      const itm = String(raw[r][iItm] || '').trim();
+      if (!itm) continue;
+      S.inv.push({
+        tag:  String(raw[r][iTag] || '').trim(),
+        item: itm,
+        bez:  String(raw[r][iBez] || '').trim(),
+        sub:  String(raw[r][iSub] || '').trim(),
+        row:  r,
+      });
+    }
+
+    // Extract warehouse from filename  "Inventory CHU.8678 Edubook.xlsx"
+    const m = file.name.match(/CHU\.\d+/i);
+    S.wh     = m ? m[0].toUpperCase() : null;
+    S.whName = file.name
+                 .replace(/^Inventory\s+/i, '')
+                 .replace(/CHU\.\d+\s*/i, '')
+                 .replace(/\.xlsx?$/i, '')
+                 .trim();
+    S.fname   = file.name;
+    S.fdata   = buf;
+    S.fdataB64 = bufToB64(buf);
+    S.scanned  = {};
+
+    saveSession();
+    showScanCard();
+    updateUI();
+    msg.textContent = '';
+
+  } catch (e) {
+    msg.textContent = 'Fehler: ' + e.message;
+  }
+  input.value = '';
+}
+
+function showScanCard() {
+  document.getElementById('load-card').classList.add('hidden');
+  document.getElementById('scan-card').classList.remove('hidden');
+}
+
+// ── UI UPDATE ────────────────────────────────────────────────────────────────
+function updateUI() {
+  if (!S.inv) return;
+  const total   = S.inv.length;
+  const found   = S.inv.filter(i => (S.scanned[i.item] || 0) > 0).length;
+  const missing = total - found;
+  const extra   = Object.keys(S.scanned).filter(k => !S.inv.find(i => i.item === k)).length;
+
+  document.getElementById('cnt-ok').textContent   = found;
+  document.getElementById('cnt-miss').textContent = missing;
+  document.getElementById('cnt-xtra').textContent = extra;
+  document.getElementById('pfill').style.width    = total ? (found / total * 100) + '%' : '0%';
+  document.getElementById('ptext').textContent    = `${found} von ${total} Positionen`;
+
+  const sub = document.getElementById('hdr-sub');
+  sub.textContent = S.wh
+    ? `${S.wh}  ·  ${S.whName || ''}`
+    : 'Keine Inventurdatei geladen';
+}
+
+// ── MAIN SCANNER ─────────────────────────────────────────────────────────────
+async function toggleScan() {
+  const btn     = document.getElementById('btn-cam');
+  const camCard = document.getElementById('cam-card');
+  const running = camCard && !camCard.classList.contains('hidden');
+
+  if (running) {
+    stopMainScan();
+    return;
+  }
+  camCard.classList.remove('hidden');
+  btn.textContent = '⏹ Scannen stoppen';
+
+  if (!reader1D) reader1D = new ZXing.BrowserMultiFormatReader();
+
+  try {
+    const devices = await ZXing.BrowserCodeReader.listVideoInputDevices();
+    const cam = devices.find(d => /back|rear|environment/i.test(d.label))
+                || devices[devices.length - 1];
+
+    await reader1D.decodeFromVideoDevice(
+      cam?.deviceId ?? null, 'video-main',
+      (result) => { if (result) handleCode(result.getText()); }
+    );
+  } catch (e) {
+    alert('Kamera-Fehler: ' + e.message);
+    stopMainScan();
+  }
+}
+
+function stopMainScan() {
+  if (reader1D) { try { reader1D.reset(); } catch (_) {} }
+  document.getElementById('cam-card').classList.add('hidden');
+  document.getElementById('btn-cam').textContent = '📷 Scannen starten';
+}
+
+function handleCode(code) {
+  const now = Date.now();
+  if (code === lastCode && now - lastCodeTime < 2500) return;
+  if (document.getElementById('qty-modal').classList.contains('open')) return;
+  lastCode = code; lastCodeTime = now;
+  document.getElementById('scan-hint').textContent = 'Erkannt: ' + code;
+  if (navigator.vibrate) navigator.vibrate(60);
+  openQtyModal(code);
+}
+
+// ── MANUAL ADD ───────────────────────────────────────────────────────────────
+function onManualAdd() {
+  const inp  = document.getElementById('manual-inp');
+  const code = inp.value.trim();
+  if (!code) return;
+  inp.value = '';
+  openQtyModal(code);
+}
+
+// ── QUANTITY MODAL ────────────────────────────────────────────────────────────
+function openQtyModal(code) {
+  pendingCode = code;
+  const invItem = S.inv?.find(i => i.item === code);
+  const name    = invItem ? invItem.bez : '(nicht in Inventurliste)';
+  const current = S.scanned[code] || 0;
+
+  let minV = '—', qohV = '—';
+  const mlEntry = S.ml?.i?.[code];
+  if (mlEntry && S.wh && mlEntry.l[S.wh]) {
+    minV = mlEntry.l[S.wh].min;
+    qohV = mlEntry.l[S.wh].qoh;
+  }
+
+  document.getElementById('m-nr').textContent    = code;
+  document.getElementById('m-name').textContent  = name;
+  document.getElementById('m-cur').textContent   = current;
+  document.getElementById('m-min').textContent   = minV;
+  document.getElementById('m-qoh').textContent   = qohV;
+  document.getElementById('qty-val').value       = 1;
+  refreshTotal();
+
+  document.getElementById('qty-modal').classList.add('open');
+  document.getElementById('qty-val').focus();
+}
+
+function adjQty(delta) {
+  const inp = document.getElementById('qty-val');
+  inp.value = Math.max(1, (parseInt(inp.value) || 1) + delta);
+  refreshTotal();
+}
+
+function refreshTotal() {
+  const add     = Math.max(1, parseInt(document.getElementById('qty-val').value) || 1);
+  const current = S.scanned[pendingCode] || 0;
+  document.getElementById('m-total').textContent = current + add;
+}
+
+function confirmQty() {
+  if (!pendingCode) return;
+  const add = Math.max(1, parseInt(document.getElementById('qty-val').value) || 1);
+  S.scanned[pendingCode] = (S.scanned[pendingCode] || 0) + add;
+  saveSession();
+  updateUI();
+  closeQtyModal();
+}
+
+function closeQtyModal() {
+  document.getElementById('qty-modal').classList.remove('open');
+  pendingCode = null;
+  lastCode    = null;
+}
+
+// ── PART SEARCH ──────────────────────────────────────────────────────────────
+function doSearch() {
+  const q   = document.getElementById('srch-inp').value.trim();
+  const div = document.getElementById('srch-result');
+  if (!q) return;
+
+  if (!S.ml?.i) {
+    div.innerHTML = '<p style="color:var(--red)">Masterlist nicht geladen.</p>';
+    return;
+  }
+
+  const entry = S.ml.i[q];
+  if (!entry) {
+    div.innerHTML = `<p style="color:var(--muted)">Kein Eintrag für <strong>${q}</strong> gefunden.</p>`;
+    return;
+  }
+
+  const wmap = S.ml._w || {};
+  const rows = Object.entries(entry.l || {})
+    .sort((a, b) => a[0].localeCompare(b[0]))
+    .map(([sub, loc]) => {
+      const full  = wmap[sub] || sub;
+      const short = full.replace(/\d{4,5}\s+/, '').replace(/\s*CSP\S+.*$/, '').trim();
+      return `<tr>
+        <td><strong>${sub}</strong></td>
+        <td>${short}</td>
+        <td style="text-align:center;font-weight:700">${loc.qoh}</td>
+        <td style="text-align:center">${loc.min}</td>
+      </tr>`;
+    }).join('');
+
+  div.innerHTML = `
+    <div style="margin-bottom:12px">
+      <strong style="font-size:16px">${q}</strong><br>
+      <span style="color:var(--muted);font-size:13px">${entry.n}</span>
+    </div>
+    <table class="rtable">
+      <thead><tr>
+        <th>INV_LOC</th><th>Name</th>
+        <th style="text-align:center">QOH</th>
+        <th style="text-align:center">MIN</th>
+      </tr></thead>
+      <tbody>${rows}</tbody>
+    </table>`;
+}
+
+async function startSearchScan() {
+  const modal = document.getElementById('ss-modal');
+  modal.classList.add('open');
+
+  if (!readerSS) readerSS = new ZXing.BrowserMultiFormatReader();
+  try {
+    const devices = await ZXing.BrowserCodeReader.listVideoInputDevices();
+    const cam = devices.find(d => /back|rear|environment/i.test(d.label))
+                || devices[devices.length - 1];
+    await readerSS.decodeFromVideoDevice(cam?.deviceId ?? null, 'video-ss',
+      (result) => {
+        if (!result) return;
+        readerSS.reset();
+        modal.classList.remove('open');
+        document.getElementById('srch-inp').value = result.getText();
+        doSearch();
+      });
+  } catch (e) {
+    alert('Kamera-Fehler: ' + e.message);
+    modal.classList.remove('open');
+  }
+}
+
+function closeSSModal() {
+  if (readerSS) { try { readerSS.reset(); } catch (_) {} }
+  document.getElementById('ss-modal').classList.remove('open');
+}
+
+// ── QR EXPORT ────────────────────────────────────────────────────────────────
+async function showExportQR() {
+  const canvas = document.getElementById('qr-canvas');
+  const msg    = document.getElementById('qr-msg');
+  canvas.classList.add('hidden');
+  msg.textContent = 'Generiere …';
+
+  const json = JSON.stringify(S.scanned || {});
+  let payload;
+
+  try {
+    const cs     = new CompressionStream('gzip');
+    const writer = cs.writable.getWriter();
+    writer.write(new TextEncoder().encode(json));
+    writer.close();
+    const compressed = await new Response(cs.readable).arrayBuffer();
+    payload = 'GZ:' + bufToB64(compressed);
+  } catch (_) {
+    // Fallback: uncompressed base64
+    payload = 'RAW:' + btoa(unescape(encodeURIComponent(json)));
+  }
+
+  const size = payload.length;
+  msg.textContent = `${size} Zeichen (max. 2953)`;
+
+  if (size > 2953) {
+    msg.textContent += ' – zu gross! Datei teilen statt QR.';
+    return;
+  }
+
+  try {
+    canvas.classList.remove('hidden');
+    await QRCode.toCanvas(canvas, payload, {
+      width:  Math.min(300, window.innerWidth - 60),
+      margin: 2,
+    });
+  } catch (e) {
+    msg.textContent = 'QR-Fehler: ' + e.message;
+  }
+}
+
+// ── QR IMPORT ────────────────────────────────────────────────────────────────
+async function startQRImport() {
+  const modal = document.getElementById('qr-modal');
+  modal.classList.add('open');
+
+  if (!readerQR) readerQR = new ZXing.BrowserMultiFormatReader();
+  try {
+    const devices = await ZXing.BrowserCodeReader.listVideoInputDevices();
+    const cam = devices.find(d => /back|rear|environment/i.test(d.label))
+                || devices[devices.length - 1];
+
+    await readerQR.decodeFromVideoDevice(cam?.deviceId ?? null, 'video-qr',
+      async (result) => {
+        if (!result) return;
+        readerQR.reset();
+        modal.classList.remove('open');
+        await mergeQRPayload(result.getText());
+      });
+  } catch (e) {
+    alert('Kamera-Fehler: ' + e.message);
+    modal.classList.remove('open');
+  }
+}
+
+async function mergeQRPayload(text) {
+  try {
+    let jsonStr;
+    if (text.startsWith('GZ:')) {
+      const bytes = b64ToBuffer(text.slice(3));
+      const ds    = new DecompressionStream('gzip');
+      const w     = ds.writable.getWriter();
+      w.write(new Uint8Array(bytes)); w.close();
+      jsonStr = await new Response(ds.readable).text();
+    } else if (text.startsWith('RAW:')) {
+      jsonStr = decodeURIComponent(escape(atob(text.slice(4))));
+    } else {
+      jsonStr = text;
+    }
+
+    const imported = JSON.parse(jsonStr);
+    let n = 0;
+    for (const [item, qty] of Object.entries(imported)) {
+      S.scanned[item] = (S.scanned[item] || 0) + qty;
+      n++;
+    }
+    saveSession();
+    updateUI();
+    alert(`${n} Positionen vom Kollegen hinzugefügt!`);
+  } catch (e) {
+    alert('QR-Fehler: ' + e.message);
+  }
+}
+
+function closeQRModal() {
+  if (readerQR) { try { readerQR.reset(); } catch (_) {} }
+  document.getElementById('qr-modal').classList.remove('open');
+}
+
+// ── FINISH TAB ────────────────────────────────────────────────────────────────
+function renderFinish() {
+  const div = document.getElementById('finish-body');
+  if (!S.inv) {
+    div.innerHTML = '<p style="color:var(--muted)">Keine Inventur geladen.</p>';
+    return;
+  }
+
+  const found   = S.inv.filter(i => (S.scanned[i.item] || 0) > 0);
+  const missing = S.inv.filter(i => (S.scanned[i.item] || 0) === 0);
+  const extra   = Object.entries(S.scanned)
+                    .filter(([k]) => !S.inv.find(i => i.item === k));
+
+  const missRows = missing.map(i =>
+    `<tr><td>${i.item}</td><td style="font-size:12px">${i.bez}</td></tr>`).join('');
+  const xtraRows = extra.map(([k, v]) =>
+    `<tr><td>${k}</td><td style="text-align:center">${v}</td></tr>`).join('');
+
+  div.innerHTML = `
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px;text-align:center">
+      <div><div style="font-size:28px;font-weight:800;color:var(--green)">${found.length}</div><div style="font-size:11px;color:var(--muted)">Gezählt</div></div>
+      <div><div style="font-size:28px;font-weight:800;color:var(--red)">${missing.length}</div><div style="font-size:11px;color:var(--muted)">Fehlend</div></div>
+      <div><div style="font-size:28px;font-weight:800;color:var(--orange)">${extra.length}</div><div style="font-size:11px;color:var(--muted)">Extra</div></div>
+    </div>
+
+    ${missing.length ? `
+    <details>
+      <summary style="font-weight:600;color:var(--red)">Fehlende Artikel (${missing.length})</summary>
+      <table class="rtable" style="margin-top:8px">
+        <thead><tr><th>Item-Nr.</th><th>Bezeichnung</th></tr></thead>
+        <tbody>${missRows}</tbody>
+      </table>
+    </details>` : ''}
+
+    ${extra.length ? `
+    <details style="margin-top:8px">
+      <summary style="font-weight:600;color:var(--orange)">Extra-Artikel (${extra.length})</summary>
+      <table class="rtable" style="margin-top:8px">
+        <thead><tr><th>Item-Nr.</th><th>Anzahl</th></tr></thead>
+        <tbody>${xtraRows}</tbody>
+      </table>
+    </details>` : ''}
+  `;
+}
+
+// ── DOWNLOAD XLSX ─────────────────────────────────────────────────────────────
+async function downloadXLSX() {
+  if (!S.fdata) {
+    if (!S.fdataB64) {
+      alert('Originaldatei nicht verfügbar. Bitte XLSX neu laden.');
+      return;
+    }
+    S.fdata = b64ToBuffer(S.fdataB64);
+  }
+
+  try {
+    const wb     = XLSX.read(S.fdata, { type: 'array' });
+    const wsName = wb.SheetNames.find(n => n.toLowerCase().includes('fnd_gfm'))
+                   || wb.SheetNames[0];
+    const ws     = wb.Sheets[wsName];
+    const raw    = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
+    const hdr    = raw[0].map(h => String(h).trim());
+
+    const iItm = hdr.indexOf('Item');
+    const iGez = hdr.indexOf('Gezählt');
+    const iBez = hdr.indexOf('Bezeichnung');
+
+    if (iGez < 0) { alert('"Gezählt"-Spalte nicht gefunden.'); return; }
+
+    // Fill known items
+    for (let r = 1; r < raw.length; r++) {
+      const itm   = String(raw[r][iItm] || '').trim();
+      if (!itm) continue;
+      const count = S.scanned[itm] || 0;
+      const addr  = XLSX.utils.encode_cell({ r, c: iGez });
+      ws[addr]    = { t: 'n', v: count };
+    }
+
+    // Append extra items at bottom
+    const extra = Object.entries(S.scanned)
+                    .filter(([k]) => !S.inv?.find(i => i.item === k));
+    let lastR = raw.length;
+    for (const [item, count] of extra) {
+      const newRow = Array(hdr.length).fill('');
+      newRow[iItm] = item;
+      newRow[iGez] = count;
+      if (iBez >= 0) newRow[iBez] = S.ml?.i?.[item]?.n || '';
+      XLSX.utils.sheet_add_aoa(ws, [newRow], { origin: lastR });
+      lastR++;
+    }
+    // Update range
+    ws['!ref'] = XLSX.utils.encode_range(
+      { r: 0, c: 0 },
+      { r: lastR - 1, c: hdr.length - 1 }
+    );
+
+    const outName = (S.fname || 'Inventur').replace(/\.xlsx?$/i, '') + '_ausgefüllt.xlsx';
+    XLSX.writeFile(wb, outName);
+  } catch (e) {
+    alert('Fehler: ' + e.message);
+  }
+}
+
+// ── RESET ────────────────────────────────────────────────────────────────────
+function resetSession() {
+  if (!confirm('Aktuelle Inventur löschen und neu starten?')) return;
+  stopMainScan();
+  S.inv = S.fdata = S.fdataB64 = S.fname = S.wh = S.whName = null;
+  S.scanned = {};
+  localStorage.removeItem(SESSION_KEY);
+  document.getElementById('load-card').classList.remove('hidden');
+  document.getElementById('scan-card').classList.add('hidden');
+  document.getElementById('hdr-sub').textContent = 'Keine Inventurdatei geladen';
+  showPage('inv', document.getElementById('nav-inv'));
+}
+
+// ── SESSION PERSIST ───────────────────────────────────────────────────────────
+function saveSession() {
+  try {
+    localStorage.setItem(SESSION_KEY, JSON.stringify({
+      inv:      S.inv,
+      wh:       S.wh,
+      whName:   S.whName,
+      fname:    S.fname,
+      fdataB64: S.fdataB64,
+      scanned:  S.scanned,
+    }));
+  } catch (_) {}
+}
+
+// ── UTILS ─────────────────────────────────────────────────────────────────────
+function bufToB64(buf) {
+  const bytes = new Uint8Array(buf);
+  let b = '';
+  for (let i = 0; i < bytes.length; i++) b += String.fromCharCode(bytes[i]);
+  return btoa(b);
+}
+
+function b64ToBuffer(b64) {
+  const bin  = atob(b64);
+  const buf  = new ArrayBuffer(bin.length);
+  const view = new Uint8Array(buf);
+  for (let i = 0; i < bin.length; i++) view[i] = bin.charCodeAt(i);
+  return buf;
+}
+</script>
+
+</body>
+</html>
