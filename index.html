@@ -258,7 +258,7 @@
 <body>
 
 <header>
-  <h1>📦 Inventur Scanner <span style="font-size:11px;font-weight:400;opacity:.55">Build 15</span></h1>
+  <h1>📦 Inventur Scanner <span style="font-size:11px;font-weight:400;opacity:.55">Build 16</span></h1>
   <p id="hdr-sub">Keine Inventurdatei geladen</p>
 </header>
 
@@ -1006,7 +1006,7 @@ function renderFinish() {
   const extra = Object.entries(S.scanned)
                   .filter(([k]) => !S.inv.find(i => i.item === k));
 
-  let okCount = 0, totalDeficit = 0;
+  let scannedStk = 0, totalDeficit = 0;
   const missingItems = [];
 
   for (const i of S.inv) {
@@ -1015,12 +1015,15 @@ function renderFinish() {
     const target = qoh !== null ? qoh : 1;
     const deficit = Math.max(0, target - sc);
     if (deficit === 0) {
-      okCount++;
+      scannedStk += target;
     } else {
       totalDeficit += deficit;
+      scannedStk   += Math.min(sc, target);
       missingItems.push({ ...i, sc, qoh, deficit });
     }
   }
+
+  const extraStk = extra.reduce((s, [, v]) => s + v, 0);
 
   const missRows = missingItems.map(i => {
     const defCell = i.qoh !== null
@@ -1033,24 +1036,16 @@ function renderFinish() {
   const xtraRows = extra.map(([k, v]) =>
     `<tr><td>${k}</td><td style="text-align:center">${v}</td></tr>`).join('');
 
-  const missLabel = totalDeficit > 0
-    ? `${missingItems.length} Pos. · ${totalDeficit} Stk.`
-    : `${missingItems.length}`;
-
   div.innerHTML = `
     <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px;text-align:center">
-      <div><div style="font-size:28px;font-weight:800;color:var(--green)">${okCount}</div><div style="font-size:11px;color:var(--muted)">Gezählt</div></div>
-      <div>
-        <div style="font-size:28px;font-weight:800;color:var(--red)">${missingItems.length}</div>
-        <div style="font-size:11px;color:var(--muted)">Fehlend</div>
-        ${totalDeficit > 0 ? `<div style="font-size:12px;font-weight:700;color:var(--red)">${totalDeficit} Stk.</div>` : ''}
-      </div>
-      <div><div style="font-size:28px;font-weight:800;color:var(--orange)">${extra.length}</div><div style="font-size:11px;color:var(--muted)">Extra</div></div>
+      <div><div style="font-size:28px;font-weight:800;color:var(--green)">${scannedStk}</div><div style="font-size:11px;color:var(--muted)">Gezählt Stk.</div></div>
+      <div><div style="font-size:28px;font-weight:800;color:var(--red)">${totalDeficit}</div><div style="font-size:11px;color:var(--muted)">Fehlend Stk.</div></div>
+      <div><div style="font-size:28px;font-weight:800;color:var(--orange)">${extraStk}</div><div style="font-size:11px;color:var(--muted)">Extra Stk.</div></div>
     </div>
 
     ${missingItems.length ? `
     <details>
-      <summary style="font-weight:600;color:var(--red)">Fehlende Artikel (${missLabel})</summary>
+      <summary style="font-weight:600;color:var(--red)">Fehlende Artikel (${missingItems.length} Pos. · ${totalDeficit} Stk.)</summary>
       <table class="rtable" style="margin-top:8px">
         <thead><tr><th>Item-Nr.</th><th>Bezeichnung</th><th style="text-align:center">noch fehlend</th></tr></thead>
         <tbody>${missRows}</tbody>
@@ -1059,7 +1054,7 @@ function renderFinish() {
 
     ${extra.length ? `
     <details style="margin-top:8px">
-      <summary style="font-weight:600;color:var(--orange)">Extra-Artikel (${extra.length})</summary>
+      <summary style="font-weight:600;color:var(--orange)">Extra-Artikel (${extra.length} Pos. · ${extraStk} Stk.)</summary>
       <table class="rtable" style="margin-top:8px">
         <thead><tr><th>Item-Nr.</th><th>Anzahl</th></tr></thead>
         <tbody>${xtraRows}</tbody>
