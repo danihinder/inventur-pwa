@@ -252,8 +252,8 @@
     .rtable td { padding: 9px 6px; border-bottom: 1px solid var(--bg); }
     .rtable tr:last-child td { border-bottom: none; }
 
-    /* ── QR export canvas ── */
-    #qr-canvas { display: block; margin: 16px auto; border-radius: 8px; }
+    /* ── QR export image ── */
+    #qr-img { display: block; margin: 16px auto; border-radius: 8px; max-width: 300px; width: 100%; }
 
     /* ── video QR modal ── */
     #video-qr { width: 100%; border-radius: 12px; display: block; }
@@ -404,8 +404,8 @@
     <button class="btn btn-outline" onclick="showExportQR()">
       🔲 QR-Code anzeigen
     </button>
-    <canvas id="qr-canvas" class="hidden" width="280" height="280"></canvas>
-    <p id="qr-msg" style="font-size:12px;color:var(--muted);text-align:center;margin-top:8px"></p>
+    <img id="qr-img" class="hidden" style="display:block;margin:16px auto;border-radius:8px;max-width:300px;width:100%">
+    <p id="qr-msg" style="font-size:14px;text-align:center;margin-top:8px;font-weight:600"></p>
   </div>
 </div>
 
@@ -849,10 +849,18 @@ function closeSSModal() {
 
 // ── QR EXPORT ────────────────────────────────────────────────────────────────
 async function showExportQR() {
-  const canvas = document.getElementById('qr-canvas');
-  const msg    = document.getElementById('qr-msg');
-  canvas.classList.add('hidden');
+  const img = document.getElementById('qr-img');
+  const msg = document.getElementById('qr-msg');
+  img.classList.add('hidden');
+  msg.style.color = 'var(--muted)';
   msg.textContent = 'Generiere …';
+
+  // Prüfen ob QRCode-Bibliothek geladen ist
+  if (typeof QRCode === 'undefined') {
+    msg.style.color = 'var(--red)';
+    msg.textContent = 'QR-Bibliothek fehlt – bitte Seite neu laden.';
+    return;
+  }
 
   const json = JSON.stringify(S.scanned || {});
   let payload;
@@ -865,26 +873,31 @@ async function showExportQR() {
     const compressed = await new Response(cs.readable).arrayBuffer();
     payload = 'GZ:' + bufToB64(compressed);
   } catch (_) {
-    // Fallback: uncompressed base64
     payload = 'RAW:' + btoa(unescape(encodeURIComponent(json)));
   }
 
-  const size = payload.length;
-  msg.textContent = `${size} Zeichen (max. 2953)`;
+  const size    = payload.length;
+  const nItems  = Object.keys(S.scanned || {}).length;
 
   if (size > 2953) {
-    msg.textContent += ' – zu gross! Datei teilen statt QR.';
+    msg.style.color = 'var(--red)';
+    msg.textContent = `Zu gross (${size} Zeichen, max. 2953) – bitte Datei teilen.`;
     return;
   }
 
   try {
-    canvas.classList.remove('hidden');
-    await QRCode.toCanvas(canvas, payload, {
-      width:  Math.min(300, window.innerWidth - 60),
-      margin: 2,
+    const dataUrl = await QRCode.toDataURL(payload, {
+      width:         Math.min(300, window.innerWidth - 60),
+      margin:        2,
+      errorCorrectionLevel: 'M',
     });
+    img.src = dataUrl;
+    img.classList.remove('hidden');
+    msg.style.color = 'var(--muted)';
+    msg.textContent = `${nItems} Artikel · ${size} Zeichen`;
   } catch (e) {
-    msg.textContent = 'QR-Fehler: ' + e.message;
+    msg.style.color = 'var(--red)';
+    msg.textContent = 'Fehler: ' + e.message;
   }
 }
 
