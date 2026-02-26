@@ -134,28 +134,6 @@
       background: #000;
     }
     .scanner-wrap video { width: 100%; display: block; }
-    .scan-overlay {
-      position: absolute; inset: 0;
-      display: flex; align-items: center; justify-content: center;
-    }
-    .scan-box {
-      width: 60%; aspect-ratio: 2/1;
-      border: 3px solid rgba(255,255,255,.85);
-      border-radius: 8px;
-      box-shadow: 0 0 0 9999px rgba(0,0,0,.45);
-    }
-    .scan-line {
-      position: absolute;
-      left: 20%; right: 20%;
-      height: 2px;
-      background: rgba(255, 80, 80, .8);
-      animation: scanline 2s ease-in-out infinite;
-    }
-    @keyframes scanline {
-      0%   { top: 35%; }
-      50%  { top: 62%; }
-      100% { top: 35%; }
-    }
     #scan-hint {
       text-align: center;
       color: var(--muted);
@@ -469,10 +447,6 @@
   <div class="modal">
     <div class="scanner-wrap">
       <video id="video-main" playsinline muted autoplay></video>
-      <div class="scan-overlay">
-        <div class="scan-box"></div>
-        <div class="scan-line"></div>
-      </div>
     </div>
     <p id="scan-hint" style="text-align:center;color:var(--muted);font-size:13px;padding:10px 0 4px">
       Barcode mittig in den Rahmen halten …
@@ -499,10 +473,6 @@
   <div class="modal">
     <div class="scanner-wrap">
       <video id="video-ss" playsinline muted autoplay></video>
-      <div class="scan-overlay">
-        <div class="scan-box"></div>
-        <div class="scan-line"></div>
-      </div>
     </div>
     <p style="text-align:center;color:var(--muted);font-size:13px;padding:10px 0 4px">
       Barcode mittig in den Rahmen halten …
