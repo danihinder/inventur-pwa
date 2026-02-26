@@ -659,16 +659,22 @@ function showScanCard() {
 // ── UI UPDATE ────────────────────────────────────────────────────────────────
 function updateUI() {
   if (!S.inv) return;
-  const total   = S.inv.length;
-  const found   = S.inv.filter(i => (S.scanned[i.item] || 0) > 0).length;
-  const missing = total - found;
+  const total = S.inv.length;
+  let ok = 0;
+  for (const i of S.inv) {
+    const sc     = S.scanned[i.item] || 0;
+    const qoh    = S.ml?.i?.[i.item]?.l?.[S.wh]?.qoh ?? null;
+    const target = qoh !== null ? qoh : 1;   // kein Masterlist-Eintrag → mind. 1 scannen
+    if (sc >= target) ok++;
+  }
+  const missing = total - ok;
   const extra   = Object.keys(S.scanned).filter(k => !S.inv.find(i => i.item === k)).length;
 
-  document.getElementById('cnt-ok').textContent   = found;
+  document.getElementById('cnt-ok').textContent   = ok;
   document.getElementById('cnt-miss').textContent = missing;
   document.getElementById('cnt-xtra').textContent = extra;
-  document.getElementById('pfill').style.width    = total ? (found / total * 100) + '%' : '0%';
-  document.getElementById('ptext').textContent    = `${found} von ${total} Positionen`;
+  document.getElementById('pfill').style.width    = total ? (ok / total * 100) + '%' : '0%';
+  document.getElementById('ptext').textContent    = `${ok} von ${total} Positionen`;
 
   const sub = document.getElementById('hdr-sub');
   sub.textContent = S.wh
@@ -981,41 +987,53 @@ function renderFinish() {
     return;
   }
 
-  const found   = S.inv.filter(i => (S.scanned[i.item] || 0) > 0);
-  const missing = S.inv.filter(i => (S.scanned[i.item] || 0) === 0);
-  const extra   = Object.entries(S.scanned)
-                    .filter(([k]) => !S.inv.find(i => i.item === k));
+  // Jedes Teil: Soll = QOH aus Masterlist (Fallback: 1), Deficit = max(0, Soll − Gezählt)
+  const extra = Object.entries(S.scanned)
+                  .filter(([k]) => !S.inv.find(i => i.item === k));
 
-  // QOH aus Masterlist für fehlendes Lager aufaddieren
-  let totalMissingQoh = 0;
-  const missRows = missing.map(i => {
-    const qoh = S.ml?.i?.[i.item]?.l?.[S.wh]?.qoh ?? null;
-    if (qoh !== null) totalMissingQoh += qoh;
-    const qohCell = qoh !== null
-      ? `<td style="text-align:center;font-weight:700;color:var(--red)">${qoh}</td>`
+  let okCount = 0, totalDeficit = 0;
+  const missingItems = [];
+
+  for (const i of S.inv) {
+    const sc     = S.scanned[i.item] || 0;
+    const qoh    = S.ml?.i?.[i.item]?.l?.[S.wh]?.qoh ?? null;
+    const target = qoh !== null ? qoh : 1;
+    const deficit = Math.max(0, target - sc);
+    if (deficit === 0) {
+      okCount++;
+    } else {
+      totalDeficit += deficit;
+      missingItems.push({ ...i, sc, qoh, deficit });
+    }
+  }
+
+  const missRows = missingItems.map(i => {
+    const defCell = i.qoh !== null
+      ? `<td style="text-align:center;font-weight:700;color:var(--red)">${i.deficit}</td>`
       : `<td style="text-align:center;color:var(--muted)">—</td>`;
-    return `<tr><td>${i.item}</td><td style="font-size:12px">${i.bez}</td>${qohCell}</tr>`;
+    const scText = i.sc > 0 ? ` <span style="color:var(--orange);font-size:11px">(${i.sc} gez.)</span>` : '';
+    return `<tr><td>${i.item}${scText}</td><td style="font-size:12px">${i.bez}</td>${defCell}</tr>`;
   }).join('');
 
   const xtraRows = extra.map(([k, v]) =>
     `<tr><td>${k}</td><td style="text-align:center">${v}</td></tr>`).join('');
 
-  const missLabel = totalMissingQoh > 0
-    ? `${missing.length} Pos. · ${totalMissingQoh} Stk.`
-    : `${missing.length}`;
+  const missLabel = totalDeficit > 0
+    ? `${missingItems.length} Pos. · ${totalDeficit} Stk.`
+    : `${missingItems.length}`;
 
   div.innerHTML = `
     <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px;text-align:center">
-      <div><div style="font-size:28px;font-weight:800;color:var(--green)">${found.length}</div><div style="font-size:11px;color:var(--muted)">Gezählt</div></div>
+      <div><div style="font-size:28px;font-weight:800;color:var(--green)">${okCount}</div><div style="font-size:11px;color:var(--muted)">Gezählt</div></div>
       <div>
-        <div style="font-size:28px;font-weight:800;color:var(--red)">${missing.length}</div>
+        <div style="font-size:28px;font-weight:800;color:var(--red)">${missingItems.length}</div>
         <div style="font-size:11px;color:var(--muted)">Fehlend</div>
-        ${totalMissingQoh > 0 ? `<div style="font-size:12px;font-weight:700;color:var(--red)">${totalMissingQoh} Stk.</div>` : ''}
+        ${totalDeficit > 0 ? `<div style="font-size:12px;font-weight:700;color:var(--red)">${totalDeficit} Stk.</div>` : ''}
       </div>
       <div><div style="font-size:28px;font-weight:800;color:var(--orange)">${extra.length}</div><div style="font-size:11px;color:var(--muted)">Extra</div></div>
     </div>
 
-    ${missing.length ? `
+    ${missingItems.length ? `
     <details>
       <summary style="font-weight:600;color:var(--red)">Fehlende Artikel (${missLabel})</summary>
       <table class="rtable" style="margin-top:8px">
