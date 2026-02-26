@@ -34,7 +34,7 @@ Auf **Scannen starten** tippen. Die Kamera öffnet sich.
 - Nach erfolgreichem Scan: Kamera schliesst sich, Mengendialog erscheint
 - Menge bestätigen → Scanner öffnet sich automatisch wieder
 
-Im Scan-Dialog gibt es einen Schalter für **Ton** (Beep) und **Haptik** (Vibration) bei erfolgreichem Scan.
+Im Scan-Dialog gibt es einen Schalter für **Ton** (Beep) und **Haptik** (Vibration, nur Android) bei erfolgreichem Scan.
 
 Alternativ können Artikelnummern auch über **Manuelle Eingabe** eingetippt werden.
 
