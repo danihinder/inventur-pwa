@@ -261,7 +261,7 @@
 <body>
 
 <header>
-  <h1>📦 Inventur Scanner <span id="build-lbl" style="font-size:11px;font-weight:400;opacity:.55;cursor:default" onclick="onBuildTap()">Build 21</span></h1>
+  <h1>📦 Inventur Scanner <span id="build-lbl" style="font-size:11px;font-weight:400;opacity:.55;cursor:default" onclick="onBuildTap()">Build 22</span></h1>
   <p id="hdr-sub">Keine Inventurdatei geladen</p>
 </header>
 
@@ -670,7 +670,7 @@ function updateUI() {
   const extraItems = Object.keys(S.scanned).filter(k => !S.inv.find(i => i.item === k));
   const extraStk   = extraItems.reduce((s, k) => s + (S.scanned[k] || 0), 0);
 
-  document.getElementById('cnt-ok-stk').textContent   = scannedQoh;
+  document.getElementById('cnt-ok-stk').textContent   = Object.values(S.scanned).reduce((s,v)=>s+v,0);
   document.getElementById('cnt-miss-stk').textContent = totalDeficit;
   document.getElementById('cnt-xtra-stk').textContent = extraStk;
 
@@ -1044,7 +1044,8 @@ function renderFinish() {
   const extra = Object.entries(S.scanned)
                   .filter(([k]) => !S.inv.find(i => i.item === k));
 
-  let scannedStk = 0, totalDeficit = 0;
+  const scannedStk = Object.values(S.scanned).reduce((s, v) => s + v, 0);
+  let totalDeficit = 0;
   const missingItems = [];
 
   for (const i of S.inv) {
@@ -1052,11 +1053,8 @@ function renderFinish() {
     const qoh    = S.ml?.i?.[i.item]?.l?.[S.wh]?.qoh ?? null;
     const target = qoh !== null ? qoh : 1;
     const deficit = Math.max(0, target - sc);
-    if (deficit === 0) {
-      scannedStk += target;
-    } else {
+    if (deficit > 0) {
       totalDeficit += deficit;
-      scannedStk   += Math.min(sc, target);
       missingItems.push({ ...i, sc, qoh, deficit });
     }
   }
@@ -1111,9 +1109,9 @@ function renderFinish() {
 
   div.innerHTML = `
     <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px;text-align:center">
-      <div><div style="font-size:28px;font-weight:800;color:var(--green)">${scannedStk}</div><div style="font-size:11px;color:var(--muted)">Gezählt Stk.</div></div>
-      <div><div style="font-size:28px;font-weight:800;color:var(--red)">${totalDeficit}</div><div style="font-size:11px;color:var(--muted)">Fehlend Stk.</div></div>
-      <div><div style="font-size:28px;font-weight:800;color:var(--orange)">${extraStk}</div><div style="font-size:11px;color:var(--muted)">Extra Stk.</div></div>
+      <div><div style="font-size:28px;font-weight:800;color:var(--green)">${scannedStk}</div><div style="font-size:11px;color:var(--muted)">Gezählt</div></div>
+      <div><div style="font-size:28px;font-weight:800;color:var(--red)">${totalDeficit}</div><div style="font-size:11px;color:var(--muted)">Fehlend</div></div>
+      <div><div style="font-size:28px;font-weight:800;color:var(--orange)">${extraStk}</div><div style="font-size:11px;color:var(--muted)">Extra</div></div>
     </div>
 
     ${scannedRows ? `
