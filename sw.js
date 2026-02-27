@@ -1,7 +1,7 @@
 // ── Inventur Scanner – Service Worker ────────────────────────────────────────
 // WICHTIG: CACHE_NAME hochzählen (v2, v3, …) bei jedem Deployment.
 // Das löst die Update-Erkennung im Browser aus.
-const CACHE_NAME = 'inventur-v26';
+const CACHE_NAME = 'inventur-v27';
 
 // App-Shell (müssen alle erfolgreich geladen werden)
 const CORE_URLS = [
@@ -37,6 +37,31 @@ self.addEventListener('activate', event => {
       ))
       .then(() => self.clients.claim())
   );
+});
+
+// ── SHARE TARGET: Eingehende Datei cachen + weiterleiten ─────────────────────
+self.addEventListener('fetch', event => {
+  const url = new URL(event.request.url);
+
+  if (event.request.method === 'POST' && url.searchParams.has('share-target')) {
+    event.respondWith((async () => {
+      const formData = await event.request.formData();
+      const file = formData.get('file');
+      if (file && file.size > 0) {
+        const cache = await caches.open('inventur-share');
+        await cache.put('incoming-file', new Response(await file.arrayBuffer(), {
+          headers: {
+            'Content-Type': file.type || 'application/octet-stream',
+            'X-Filename': file.name || 'shared.xlsx',
+          }
+        }));
+      }
+      const appUrl = new URL('./', self.location.href);
+      appUrl.searchParams.set('share-incoming', '1');
+      return Response.redirect(appUrl.toString(), 303);
+    })());
+    return;
+  }
 });
 
 // ── FETCH: Cache-Strategie ───────────────────────────────────────────────────

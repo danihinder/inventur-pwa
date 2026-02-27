@@ -268,7 +268,7 @@
 <body>
 
 <header>
-  <h1>📦 Inventur Scanner <span id="build-lbl" style="font-size:11px;font-weight:400;opacity:.55;cursor:default" onclick="onBuildTap()">Build 26</span></h1>
+  <h1>📦 Inventur Scanner <span id="build-lbl" style="font-size:11px;font-weight:400;opacity:.55;cursor:default" onclick="onBuildTap()">Build 27</span></h1>
   <p id="hdr-sub">Keine Inventurdatei geladen</p>
 </header>
 
@@ -285,9 +285,6 @@
       📂 XLSX aus E-Mail öffnen
     </button>
     <input type="file" id="file-inp" accept=".xlsx,.xls" class="hidden" onchange="onFileLoad(this)">
-    <button class="btn btn-outline" style="margin-top:10px" onclick="pasteFromClipboard()">
-      📋 XLSX aus Zwischenablage einfügen
-    </button>
     <p id="load-msg" style="font-size:13px;color:var(--muted);margin-top:10px"></p>
   </div>
 
@@ -612,6 +609,21 @@ function applyMode() {
   updateSoundButtons();
   _updateBuildLabel();
   applyMode();
+
+  // ── Web Share Target: eingehende XLSX-Datei verarbeiten ──────────────────
+  if (location.search.includes('share-incoming=1')) {
+    history.replaceState({}, '', location.pathname);
+    try {
+      const shareCache = await caches.open('inventur-share');
+      const resp = await shareCache.match('incoming-file');
+      if (resp) {
+        const filename = resp.headers.get('X-Filename') || 'shared.xlsx';
+        const buf = await resp.arrayBuffer();
+        await shareCache.delete('incoming-file');
+        await _loadXlsx(buf, filename, document.getElementById('load-msg'));
+      }
+    } catch (e) { console.warn('Share target error:', e); }
+  }
 })();
 
 // ── PAGE NAVIGATION ──────────────────────────────────────────────────────────
@@ -633,34 +645,6 @@ async function onFileLoad(input) {
   msg.textContent = 'Lade …';
   await _loadXlsx(await file.arrayBuffer(), file.name, msg);
   input.value = '';
-}
-
-async function pasteFromClipboard() {
-  const msg = document.getElementById('load-msg');
-  msg.textContent = '';
-
-  if (!navigator.clipboard?.read) {
-    msg.textContent = 'Zwischenablage-Zugriff nicht unterstützt in diesem Browser.';
-    return;
-  }
-
-  try {
-    msg.textContent = 'Lese Zwischenablage …';
-    const items = await navigator.clipboard.read();
-    for (const item of items) {
-      const mime = item.types.find(t =>
-        t.includes('spreadsheetml') || t.includes('excel') || t === 'application/octet-stream'
-      );
-      if (mime) {
-        const blob = await item.getType(mime);
-        await _loadXlsx(await blob.arrayBuffer(), 'Inventur_Clipboard.xlsx', msg);
-        return;
-      }
-    }
-    msg.textContent = 'Kein XLSX in der Zwischenablage gefunden. Datei zuerst kopieren.';
-  } catch (e) {
-    msg.textContent = 'Fehler: ' + e.message;
-  }
 }
 
 async function _loadXlsx(buf, filename, msg) {
