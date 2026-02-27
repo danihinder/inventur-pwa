@@ -268,7 +268,7 @@
 <body>
 
 <header>
-  <h1>📦 Inventur Scanner <span id="build-lbl" style="font-size:11px;font-weight:400;opacity:.55;cursor:default" onclick="onBuildTap()">Build 27</span></h1>
+  <h1>📦 Inventur Scanner <span id="build-lbl" style="font-size:11px;font-weight:400;opacity:.55;cursor:default" onclick="onBuildTap()">Build 28</span></h1>
   <p id="hdr-sub">Keine Inventurdatei geladen</p>
 </header>
 
@@ -609,6 +609,17 @@ function applyMode() {
   updateSoundButtons();
   _updateBuildLabel();
   applyMode();
+
+  // ── iOS Shortcut: XLSX via URL-Parameter laden ───────────────────────────
+  const _usp = new URLSearchParams(location.search);
+  const _b64 = _usp.get('xlsxb64');
+  if (_b64) {
+    history.replaceState({}, '', location.pathname);
+    try {
+      const _fname = _usp.get('xlsxname') || 'Inventur_iOS.xlsx';
+      await _loadXlsx(b64ToBuffer(_b64), _fname, document.getElementById('load-msg'));
+    } catch (e) { console.warn('URL XLSX load error:', e); }
+  }
 
   // ── Web Share Target: eingehende XLSX-Datei verarbeiten ──────────────────
   if (location.search.includes('share-incoming=1')) {
