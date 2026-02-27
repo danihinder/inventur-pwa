@@ -15,6 +15,7 @@ Wöchentlich ausführen wenn eine neue Masterlist-XLSX eintrifft.
 import sys
 import json
 import argparse
+import subprocess
 from pathlib import Path
 from collections import defaultdict
 
@@ -63,6 +64,8 @@ def main():
                         help='Pfad zur Masterlist-XLSX')
     parser.add_argument('--out', default=str(DEFAULT_OUT),
                         help='Ausgabepfad für masterlist.json')
+    parser.add_argument('--no-push', action='store_true',
+                        help='Kein automatischer Git-Commit + Push')
     args = parser.parse_args()
 
     input_path = Path(args.input)
@@ -146,10 +149,39 @@ def main():
 
     size_kb = len(json_str.encode()) / 1024
     print(f"OK  Gespeichert: {out_path}  ({size_kb:.0f} KB)")
+
+    if not args.no_push:
+        git_push(out_path, data['_generated'])
+
+
+def git_push(json_path: Path, date_str: str):
+    """Commit masterlist.json und push zu GitHub."""
+    repo_dir = json_path.parent.parent  # inventur-pwa/
+
+    def run(cmd):
+        result = subprocess.run(cmd, cwd=str(repo_dir), capture_output=True, text=True)
+        if result.returncode != 0:
+            raise RuntimeError(result.stderr.strip() or result.stdout.strip())
+        return result.stdout.strip()
+
     print()
-    print("Naechste Schritte:")
-    print("  1. data/masterlist.json in GitHub pushen")
-    print("  2. GitHub Pages aktualisiert sich automatisch")
+    try:
+        # Nur pushen wenn sich die Datei tatsächlich geändert hat
+        changed = run(['git', 'diff', '--name-only', str(json_path.relative_to(repo_dir))])
+        if not changed:
+            # Auch untracked prüfen
+            status = run(['git', 'status', '--porcelain', str(json_path.relative_to(repo_dir))])
+            if not status:
+                print("Git: keine Aenderungen, kein Push noetig.")
+                return
+
+        run(['git', 'add', str(json_path.relative_to(repo_dir))])
+        run(['git', 'commit', '-m', f'Masterlist Update {date_str}'])
+        run(['git', 'push'])
+        print("Git: committed + pushed -> GitHub Pages wird aktualisiert.")
+    except RuntimeError as e:
+        print(f"Git-Fehler: {e}")
+        print("Manuell pushen: git add data/masterlist.json && git commit -m 'Update' && git push")
 
 
 if __name__ == '__main__':

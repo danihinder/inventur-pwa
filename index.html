@@ -163,13 +163,16 @@
     /* info grid in modal */
     .info-grid {
       display: grid;
-      grid-template-columns: repeat(3, 1fr);
+      grid-template-columns: 1fr;
       gap: 8px;
       background: var(--bg);
       border-radius: 12px;
       padding: 12px;
       margin-bottom: 18px;
     }
+    .info-grid.expert { grid-template-columns: repeat(3, 1fr); }
+    .info-expert { display: none; }
+    .info-grid.expert .info-expert { display: block; }
     .info-cell { text-align: center; }
     .info-cell .lbl { font-size: 11px; color: var(--muted); margin-bottom: 4px; }
     .info-cell .val { font-size: 24px; font-weight: 800; }
@@ -258,7 +261,7 @@
 <body>
 
 <header>
-  <h1>📦 Inventur Scanner <span id="build-lbl" style="font-size:11px;font-weight:400;opacity:.55;cursor:default" onclick="onBuildTap()">Build 20</span></h1>
+  <h1>📦 Inventur Scanner <span id="build-lbl" style="font-size:11px;font-weight:400;opacity:.55;cursor:default" onclick="onBuildTap()">Build 21</span></h1>
   <p id="hdr-sub">Keine Inventurdatei geladen</p>
 </header>
 
@@ -385,17 +388,17 @@
     <div class="modal-title" id="m-nr">—</div>
     <div class="modal-sub"   id="m-name">—</div>
 
-    <div class="info-grid">
+    <div class="info-grid" id="qty-info-grid">
       <div class="info-cell">
-        <div class="lbl">Bisher</div>
+        <div class="lbl">Bisher gezählt</div>
         <div class="val val-neutral" id="m-cur">0</div>
       </div>
-      <div class="info-cell">
-        <div class="lbl">Soll (MIN)</div>
+      <div class="info-cell info-expert">
+        <div class="lbl">MIN laut System</div>
         <div class="val val-neutral" id="m-min">—</div>
       </div>
-      <div class="info-cell">
-        <div class="lbl">System (QOH)</div>
+      <div class="info-cell info-expert">
+        <div class="lbl">QOH laut System</div>
         <div class="val val-neutral" id="m-qoh">—</div>
       </div>
     </div>
@@ -799,6 +802,7 @@ function openQtyModal(code) {
   document.getElementById('m-qoh').textContent   = qohV;
   document.getElementById('qty-val').value       = 1;
   refreshTotal();
+  document.getElementById('qty-info-grid').classList.toggle('expert', expertMode);
 
   document.getElementById('qty-modal').classList.add('open');
   document.getElementById('qty-val').focus();
