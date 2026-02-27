@@ -261,7 +261,7 @@
 <body>
 
 <header>
-  <h1>📦 Inventur Scanner <span id="build-lbl" style="font-size:11px;font-weight:400;opacity:.55;cursor:default" onclick="onBuildTap()">Build 22</span></h1>
+  <h1>📦 Inventur Scanner <span id="build-lbl" style="font-size:11px;font-weight:400;opacity:.55;cursor:default" onclick="onBuildTap()">Build 23</span></h1>
   <p id="hdr-sub">Keine Inventurdatei geladen</p>
 </header>
 
@@ -1047,6 +1047,7 @@ function renderFinish() {
   const scannedStk = Object.values(S.scanned).reduce((s, v) => s + v, 0);
   let totalDeficit = 0;
   const missingItems = [];
+  const overItems   = [];
 
   for (const i of S.inv) {
     const sc     = S.scanned[i.item] || 0;
@@ -1056,6 +1057,8 @@ function renderFinish() {
     if (deficit > 0) {
       totalDeficit += deficit;
       missingItems.push({ ...i, sc, qoh, deficit });
+    } else if (qoh !== null && sc > qoh) {
+      overItems.push({ ...i, sc, qoh, excess: sc - qoh });
     }
   }
 
@@ -1075,6 +1078,10 @@ function renderFinish() {
     const bez = S.ml?.i?.[k]?.n || '';
     return `<tr><td>${k}</td><td style="font-size:12px">${bez}</td><td style="text-align:center">${v}</td></tr>`;
   }).join('');
+
+  const overRows = overItems.map(i =>
+    `<tr><td>${i.item}</td><td style="font-size:12px">${i.bez}</td><td style="text-align:center">${i.qoh}</td><td style="text-align:center;font-weight:700;color:var(--blue)">${i.sc}</td><td style="text-align:center;font-weight:700;color:var(--orange)">${i.excess}</td></tr>`
+  ).join('');
 
   // Gezählte Artikel: alle gescannten Positionen (Inventur + Extra), editierbar
   const inpStyle = 'width:58px;text-align:center;border:1px solid var(--border);border-radius:6px;padding:2px 4px;font-size:14px';
@@ -1129,6 +1136,15 @@ function renderFinish() {
       <table class="rtable" style="margin-top:8px">
         <thead><tr><th>Item-Nr.</th><th>Bezeichnung</th>${expertMode ? '<th style="text-align:center">noch fehlend</th>' : ''}</tr></thead>
         <tbody>${missRows}</tbody>
+      </table>
+    </details>` : ''}
+
+    ${expertMode && overItems.length ? `
+    <details style="margin-top:8px">
+      <summary style="font-weight:600;color:var(--blue)">Überbestand (${overItems.length} Pos.)</summary>
+      <table class="rtable" style="margin-top:8px">
+        <thead><tr><th>Item-Nr.</th><th>Bezeichnung</th><th style="text-align:center">QOH</th><th style="text-align:center">Gezählt</th><th style="text-align:center">Überschuss</th></tr></thead>
+        <tbody>${overRows}</tbody>
       </table>
     </details>` : ''}
 
