@@ -268,7 +268,7 @@
 <body>
 
 <header>
-  <h1>📦 Inventur Scanner <span id="build-lbl" style="font-size:11px;font-weight:400;opacity:.55;cursor:default" onclick="onBuildTap()">Build 29</span></h1>
+  <h1>📦 Inventur Scanner <span id="build-lbl" style="font-size:11px;font-weight:400;opacity:.55;cursor:default" onclick="onBuildTap()">Build 30</span></h1>
   <p id="hdr-sub">Keine Inventurdatei geladen</p>
 </header>
 
@@ -319,9 +319,13 @@
       <button class="btn btn-success" style="margin-top:4px" onclick="downloadXLSX()">
         ⬇️ Ausgefüllte XLSX herunterladen
       </button>
-      <p style="font-size:12px;color:var(--muted);text-align:center;margin-top:8px">
-        Anschliessend als Mail-Anhang an Materialbewirtschafter senden
-      </p>
+      <button class="btn btn-outline" style="margin-top:10px" onclick="shareXLSX()">
+        📤 Ausgefüllte XLSX zurücksenden
+      </button>
+      <div id="share-info-normal" class="hidden" style="background:var(--bg);border-radius:10px;padding:10px 12px;margin-top:8px;font-size:12px;color:var(--muted);line-height:1.8">
+        <div>📧 <strong style="color:#1a202c">An:</strong> servicematerialscontrolling@canon.ch</div>
+        <div>📋 <strong style="color:#1a202c">Betreff:</strong> <span id="share-subject-normal">—</span></div>
+      </div>
       <hr class="divider">
       <button class="btn btn-danger btn-sm" onclick="resetSession()">
         🗑 Neue Inventur starten
@@ -382,9 +386,13 @@
     <button class="btn btn-success" style="margin-top:16px" onclick="downloadXLSX()">
       ⬇️ Ausgefüllte XLSX herunterladen
     </button>
-    <p style="font-size:12px;color:var(--muted);text-align:center;margin-top:8px">
-      Anschliessend als Mail-Anhang an Materialbewirtschafter senden
-    </p>
+    <button class="btn btn-outline" style="margin-top:10px" onclick="shareXLSX()">
+      📤 Ausgefüllte XLSX zurücksenden
+    </button>
+    <div id="share-info-finish" class="hidden" style="background:var(--bg);border-radius:10px;padding:10px 12px;margin-top:8px;font-size:12px;color:var(--muted);line-height:1.8">
+      <div>📧 <strong style="color:#1a202c">An:</strong> servicematerialscontrolling@canon.ch</div>
+      <div>📋 <strong style="color:#1a202c">Betreff:</strong> <span id="share-subject-finish">—</span></div>
+    </div>
     <hr class="divider">
     <button class="btn btn-danger btn-sm" onclick="resetSession()">
       🗑 Neue Inventur starten
@@ -739,6 +747,15 @@ function updateUI() {
   sub.textContent = S.wh
     ? `${S.wh}  ·  ${S.whName || ''}`
     : 'Keine Inventurdatei geladen';
+
+  const subject = S.fname ? S.fname.replace(/\.xlsx?$/i, '') : '—';
+  ['share-subject-normal', 'share-subject-finish'].forEach(id => {
+    const el = document.getElementById(id); if (el) el.textContent = subject;
+  });
+  ['share-info-normal', 'share-info-finish'].forEach(id => {
+    const el = document.getElementById(id); if (el) el.classList.toggle('hidden', !S.fname);
+  });
+
   if (!expertMode) renderNormalFinish();
 }
 
@@ -1265,64 +1282,75 @@ function updateScanned(item, val) {
   if (expertMode) renderFinish();
 }
 
-// ── DOWNLOAD XLSX ─────────────────────────────────────────────────────────────
-async function downloadXLSX() {
+// ── XLSX AUFBEREITEN (gemeinsam für Download + Share) ─────────────────────────
+async function _buildFilledXlsx() {
   if (!S.fdata) {
-    if (!S.fdataB64) {
-      alert('Originaldatei nicht verfügbar. Bitte XLSX neu laden.');
-      return;
-    }
+    if (!S.fdataB64) throw new Error('Originaldatei nicht verfügbar. Bitte XLSX neu laden.');
     S.fdata = b64ToBuffer(S.fdataB64);
   }
+  const wb     = XLSX.read(S.fdata, { type: 'array' });
+  const wsName = wb.SheetNames.find(n => n.toLowerCase().includes('fnd_gfm'))
+                 || wb.SheetNames[0];
+  const ws     = wb.Sheets[wsName];
+  const raw    = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
+  const hdr    = raw[0].map(h => String(h).trim());
+  const iItm   = hdr.indexOf('Item');
+  const iGez   = hdr.indexOf('Gezählt');
+  const iBez   = hdr.indexOf('Bezeichnung');
 
+  if (iGez < 0) throw new Error('"Gezählt"-Spalte nicht gefunden.');
+
+  for (let r = 1; r < raw.length; r++) {
+    const itm = String(raw[r][iItm] || '').trim();
+    if (!itm) continue;
+    const count = S.scanned[itm] || 0;
+    ws[XLSX.utils.encode_cell({ r, c: iGez })] = { t: 'n', v: count };
+    if (iBez >= 0) {
+      const bez = S.ml?.i?.[itm]?.n || String(raw[r][iBez] || '');
+      ws[XLSX.utils.encode_cell({ r, c: iBez })] = { t: 's', v: bez };
+    }
+  }
+
+  const extra = Object.entries(S.scanned).filter(([k]) => !S.inv?.find(i => i.item === k));
+  let lastR = raw.length;
+  for (const [item, count] of extra) {
+    const newRow = Array(hdr.length).fill('');
+    newRow[iItm] = item;
+    newRow[iGez] = count;
+    if (iBez >= 0) newRow[iBez] = S.ml?.i?.[item]?.n || '';
+    XLSX.utils.sheet_add_aoa(ws, [newRow], { origin: lastR });
+    lastR++;
+  }
+  ws['!ref'] = XLSX.utils.encode_range({ r: 0, c: 0 }, { r: lastR - 1, c: hdr.length - 1 });
+
+  const outName = (S.fname || 'Inventur').replace(/\.xlsx?$/i, '') + '_ausgefüllt.xlsx';
+  return { wb, outName };
+}
+
+// ── DOWNLOAD XLSX ─────────────────────────────────────────────────────────────
+async function downloadXLSX() {
   try {
-    const wb     = XLSX.read(S.fdata, { type: 'array' });
-    const wsName = wb.SheetNames.find(n => n.toLowerCase().includes('fnd_gfm'))
-                   || wb.SheetNames[0];
-    const ws     = wb.Sheets[wsName];
-    const raw    = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
-    const hdr    = raw[0].map(h => String(h).trim());
-
-    const iItm = hdr.indexOf('Item');
-    const iGez = hdr.indexOf('Gezählt');
-    const iBez = hdr.indexOf('Bezeichnung');
-
-    if (iGez < 0) { alert('"Gezählt"-Spalte nicht gefunden.'); return; }
-
-    // Fill known items
-    for (let r = 1; r < raw.length; r++) {
-      const itm   = String(raw[r][iItm] || '').trim();
-      if (!itm) continue;
-      const count = S.scanned[itm] || 0;
-      ws[XLSX.utils.encode_cell({ r, c: iGez })] = { t: 'n', v: count };
-      if (iBez >= 0) {
-        const bez = S.ml?.i?.[itm]?.n || String(raw[r][iBez] || '');
-        ws[XLSX.utils.encode_cell({ r, c: iBez })] = { t: 's', v: bez };
-      }
-    }
-
-    // Append extra items at bottom
-    const extra = Object.entries(S.scanned)
-                    .filter(([k]) => !S.inv?.find(i => i.item === k));
-    let lastR = raw.length;
-    for (const [item, count] of extra) {
-      const newRow = Array(hdr.length).fill('');
-      newRow[iItm] = item;
-      newRow[iGez] = count;
-      if (iBez >= 0) newRow[iBez] = S.ml?.i?.[item]?.n || '';
-      XLSX.utils.sheet_add_aoa(ws, [newRow], { origin: lastR });
-      lastR++;
-    }
-    // Update range
-    ws['!ref'] = XLSX.utils.encode_range(
-      { r: 0, c: 0 },
-      { r: lastR - 1, c: hdr.length - 1 }
-    );
-
-    const outName = (S.fname || 'Inventur').replace(/\.xlsx?$/i, '') + '_ausgefüllt.xlsx';
+    const { wb, outName } = await _buildFilledXlsx();
     XLSX.writeFile(wb, outName);
+  } catch (e) { alert('Fehler: ' + e.message); }
+}
+
+// ── SHARE XLSX ────────────────────────────────────────────────────────────────
+async function shareXLSX() {
+  try {
+    const { wb, outName } = await _buildFilledXlsx();
+    const data = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+    const file = new File([data], outName, {
+      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    });
+    if (navigator.canShare?.({ files: [file] })) {
+      await navigator.share({ files: [file] });
+    } else {
+      XLSX.writeFile(wb, outName);
+      alert('Teilen nicht unterstützt – Datei wurde heruntergeladen.');
+    }
   } catch (e) {
-    alert('Fehler: ' + e.message);
+    if (e.name !== 'AbortError') alert('Fehler: ' + e.message);
   }
 }
 
