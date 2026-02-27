@@ -255,13 +255,20 @@
     .btn-sound        { background: var(--green); color: #fff; border: none; }
     .btn-sound.off    { background: #fff; color: var(--muted); border: 2px solid var(--border); }
 
+    /* ── NORMAL / EXPERT MODE LAYOUT ── */
+    body:not(.expert-mode) .stats { display: none !important; }
+    body:not(.expert-mode) nav { display: none; }
+    body:not(.expert-mode) .page { padding-bottom: 30px; }
+    #normal-finish-section { display: none; }
+    body:not(.expert-mode) #normal-finish-section { display: block; }
+
   </style>
 </head>
 
 <body>
 
 <header>
-  <h1>📦 Inventur Scanner <span id="build-lbl" style="font-size:11px;font-weight:400;opacity:.55;cursor:default" onclick="onBuildTap()">Build 24</span></h1>
+  <h1>📦 Inventur Scanner <span id="build-lbl" style="font-size:11px;font-weight:400;opacity:.55;cursor:default" onclick="onBuildTap()">Build 25</span></h1>
   <p id="hdr-sub">Keine Inventurdatei geladen</p>
 </header>
 
@@ -304,6 +311,21 @@
                onkeyup="if(event.key==='Enter')onManualAdd()">
         <button onclick="onManualAdd()">➕</button>
       </div>
+    </div>
+
+    <!-- NORMAL MODE: gezählte Artikel + Aktionen (kein Tab-Wechsel nötig) -->
+    <div id="normal-finish-section">
+      <div id="normal-finish-body"></div>
+      <button class="btn btn-success" style="margin-top:4px" onclick="downloadXLSX()">
+        ⬇️ Ausgefüllte XLSX herunterladen
+      </button>
+      <p style="font-size:12px;color:var(--muted);text-align:center;margin-top:8px">
+        Anschliessend als Mail-Anhang an Materialbewirtschafter senden
+      </p>
+      <hr class="divider">
+      <button class="btn btn-danger btn-sm" onclick="resetSession()">
+        🗑 Neue Inventur starten
+      </button>
     </div>
   </div>
 </div>
@@ -520,6 +542,7 @@ function onBuildTap() {
       expertMode = false;
       localStorage.removeItem('inventur_expert');
       _updateBuildLabel();
+      applyMode();
       renderFinish();
     } else {
       const pin = prompt('PIN:');
@@ -527,6 +550,7 @@ function onBuildTap() {
         expertMode = true;
         localStorage.setItem('inventur_expert', '1');
         _updateBuildLabel();
+        applyMode();
         renderFinish();
       }
     }
@@ -537,6 +561,20 @@ function _updateBuildLabel() {
   if (!el) return;
   el.style.opacity = expertMode ? '1' : '.55';
   el.style.color   = expertMode ? '#f59e0b' : '';
+}
+
+function applyMode() {
+  if (expertMode) {
+    document.body.classList.add('expert-mode');
+  } else {
+    document.body.classList.remove('expert-mode');
+    // Falls man auf einem Tab war, der im Normal Mode nicht existiert → zurück zu Inventur
+    const hiddenPages = ['page-suche', 'page-merge', 'page-finish'];
+    if (hiddenPages.some(id => document.getElementById(id)?.classList.contains('active'))) {
+      showPage('inv', document.getElementById('nav-inv'));
+    }
+    renderNormalFinish();
+  }
 }
 
 // ── INIT ─────────────────────────────────────────────────────────────────────
@@ -570,6 +608,7 @@ function _updateBuildLabel() {
   updateUI();
   updateSoundButtons();
   _updateBuildLabel();
+  applyMode();
 })();
 
 // ── PAGE NAVIGATION ──────────────────────────────────────────────────────────
@@ -683,6 +722,7 @@ function updateUI() {
   sub.textContent = S.wh
     ? `${S.wh}  ·  ${S.whName || ''}`
     : 'Keine Inventurdatei geladen';
+  if (!expertMode) renderNormalFinish();
 }
 
 // ── SOUND + HAPTIC ────────────────────────────────────────────────────────────
@@ -1161,13 +1201,51 @@ function renderFinish() {
   `;
 }
 
+function renderNormalFinish() {
+  const div = document.getElementById('normal-finish-body');
+  if (!div || !S.inv) { if (div) div.innerHTML = ''; return; }
+
+  const extra = Object.entries(S.scanned)
+    .filter(([k]) => !S.inv.find(i => i.item === k));
+
+  const inpStyle = 'width:58px;text-align:center;border:1px solid var(--border);border-radius:6px;padding:2px 4px;font-size:14px';
+  const rows = [
+    ...S.inv
+      .filter(i => (S.scanned[i.item] || 0) > 0)
+      .map(i => ({
+        item: i.item,
+        bez:  i.bez || S.ml?.i?.[i.item]?.n || '',
+        sc:   S.scanned[i.item],
+      })),
+    ...extra.map(([k, v]) => ({
+      item: k,
+      bez:  S.ml?.i?.[k]?.n || '',
+      sc:   v,
+    })),
+  ].map(i => `<tr>
+    <td>${i.item}</td>
+    <td style="font-size:12px">${i.bez}</td>
+    <td style="text-align:center"><input type="number" min="0" value="${i.sc}" style="${inpStyle}" onchange="updateScanned('${i.item}',this.value)"></td>
+  </tr>`).join('');
+
+  div.innerHTML = rows
+    ? `<details open style="margin-bottom:14px">
+        <summary style="font-weight:600;color:var(--green)">Gezählte Artikel (${Object.keys(S.scanned).length} Pos.)</summary>
+        <table class="rtable" style="margin-top:8px">
+          <thead><tr><th>Item-Nr.</th><th>Bezeichnung</th><th style="text-align:center">Gezählt</th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </details>`
+    : '<p style="color:var(--muted);font-size:13px;margin:8px 0">Noch keine Artikel gezählt.</p>';
+}
+
 function updateScanned(item, val) {
   const n = Math.max(0, parseInt(val) || 0);
   if (n === 0) delete S.scanned[item];
   else S.scanned[item] = n;
   saveSession();
   updateUI();
-  renderFinish();
+  if (expertMode) renderFinish();
 }
 
 // ── DOWNLOAD XLSX ─────────────────────────────────────────────────────────────
