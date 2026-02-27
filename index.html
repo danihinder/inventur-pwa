@@ -268,7 +268,7 @@
 <body>
 
 <header>
-  <h1>📦 Inventur Scanner <span id="build-lbl" style="font-size:11px;font-weight:400;opacity:.55;cursor:default" onclick="onBuildTap()">Build 30</span></h1>
+  <h1>📦 Inventur Scanner <span id="build-lbl" style="font-size:11px;font-weight:400;opacity:.55;cursor:default" onclick="onBuildTap()">Build 31</span></h1>
   <p id="hdr-sub">Keine Inventurdatei geladen</p>
 </header>
 
@@ -1337,6 +1337,7 @@ async function downloadXLSX() {
 
 // ── SHARE XLSX ────────────────────────────────────────────────────────────────
 async function shareXLSX() {
+  navigator.clipboard?.writeText('servicematerialscontrolling@canon.ch').catch(() => {});
   try {
     const { wb, outName } = await _buildFilledXlsx();
     const data = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
