@@ -261,7 +261,7 @@
 <body>
 
 <header>
-  <h1>📦 Inventur Scanner <span id="build-lbl" style="font-size:11px;font-weight:400;opacity:.55;cursor:default" onclick="onBuildTap()">Build 23</span></h1>
+  <h1>📦 Inventur Scanner <span id="build-lbl" style="font-size:11px;font-weight:400;opacity:.55;cursor:default" onclick="onBuildTap()">Build 24</span></h1>
   <p id="hdr-sub">Keine Inventurdatei geladen</p>
 </header>
 
@@ -675,7 +675,9 @@ function updateUI() {
   document.getElementById('cnt-xtra-stk').textContent = extraStk;
 
   document.getElementById('pfill-stk').style.width = totalQoh ? (scannedQoh / totalQoh * 100) + '%' : '0%';
-  document.getElementById('ptext-stk').textContent = totalQoh ? `${scannedQoh} von ${totalQoh} Stk.` : '—';
+  document.getElementById('ptext-stk').textContent = expertMode
+    ? (totalQoh ? `${scannedQoh} von ${totalQoh} Stk. korrekt im Lager` : '—')
+    : '';
 
   const sub = document.getElementById('hdr-sub');
   sub.textContent = S.wh
