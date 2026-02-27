@@ -268,7 +268,7 @@
 <body>
 
 <header>
-  <h1>📦 Inventur Scanner <span id="build-lbl" style="font-size:11px;font-weight:400;opacity:.55;cursor:default" onclick="onBuildTap()">Build 25</span></h1>
+  <h1>📦 Inventur Scanner <span id="build-lbl" style="font-size:11px;font-weight:400;opacity:.55;cursor:default" onclick="onBuildTap()">Build 26</span></h1>
   <p id="hdr-sub">Keine Inventurdatei geladen</p>
 </header>
 
@@ -285,6 +285,9 @@
       📂 XLSX aus E-Mail öffnen
     </button>
     <input type="file" id="file-inp" accept=".xlsx,.xls" class="hidden" onchange="onFileLoad(this)">
+    <button class="btn btn-outline" style="margin-top:10px" onclick="pasteFromClipboard()">
+      📋 XLSX aus Zwischenablage einfügen
+    </button>
     <p id="load-msg" style="font-size:13px;color:var(--muted);margin-top:10px"></p>
   </div>
 
@@ -628,9 +631,40 @@ async function onFileLoad(input) {
   if (!file) return;
   const msg = document.getElementById('load-msg');
   msg.textContent = 'Lade …';
+  await _loadXlsx(await file.arrayBuffer(), file.name, msg);
+  input.value = '';
+}
+
+async function pasteFromClipboard() {
+  const msg = document.getElementById('load-msg');
+  msg.textContent = '';
+
+  if (!navigator.clipboard?.read) {
+    msg.textContent = 'Zwischenablage-Zugriff nicht unterstützt in diesem Browser.';
+    return;
+  }
 
   try {
-    const buf = await file.arrayBuffer();
+    msg.textContent = 'Lese Zwischenablage …';
+    const items = await navigator.clipboard.read();
+    for (const item of items) {
+      const mime = item.types.find(t =>
+        t.includes('spreadsheetml') || t.includes('excel') || t === 'application/octet-stream'
+      );
+      if (mime) {
+        const blob = await item.getType(mime);
+        await _loadXlsx(await blob.arrayBuffer(), 'Inventur_Clipboard.xlsx', msg);
+        return;
+      }
+    }
+    msg.textContent = 'Kein XLSX in der Zwischenablage gefunden. Datei zuerst kopieren.';
+  } catch (e) {
+    msg.textContent = 'Fehler: ' + e.message;
+  }
+}
+
+async function _loadXlsx(buf, filename, msg) {
+  try {
     const wb  = XLSX.read(buf, { type: 'array' });
 
     // Find inventory sheet
@@ -661,14 +695,14 @@ async function onFileLoad(input) {
     }
 
     // Extract warehouse from filename  "Inventory CHU.8678 Edubook.xlsx"
-    const m = file.name.match(/CHU\.\d+/i);
+    const m = filename.match(/CHU\.\d+/i);
     S.wh     = m ? m[0].toUpperCase() : null;
-    S.whName = file.name
+    S.whName = filename
                  .replace(/^Inventory\s+/i, '')
                  .replace(/CHU\.\d+\s*/i, '')
                  .replace(/\.xlsx?$/i, '')
                  .trim();
-    S.fname   = file.name;
+    S.fname   = filename;
     S.fdata   = buf;
     S.fdataB64 = bufToB64(buf);
     S.scanned  = {};
@@ -676,12 +710,11 @@ async function onFileLoad(input) {
     saveSession();
     showScanCard();
     updateUI();
-    msg.textContent = '';
+    if (msg) msg.textContent = '';
 
   } catch (e) {
-    msg.textContent = 'Fehler: ' + e.message;
+    if (msg) msg.textContent = 'Fehler: ' + e.message;
   }
-  input.value = '';
 }
 
 function showScanCard() {
