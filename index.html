@@ -253,6 +253,10 @@
     /* ── NORMAL / EXPERT MODE LAYOUT ── */
     /* beide Modi nutzen dasselbe Layout auf der Hauptseite */
 
+    /* ── KLICKBARE TABELLENZEILEN ── */
+    .row-link { cursor: pointer; }
+    .row-link:active { background: #edf2f7; }
+
     /* ── AGE RANK COLORS ── */
     .age-x, .age-0 { color: #1a202c; }
     .age-1 { color: #4a5568; }
@@ -267,7 +271,7 @@
 <body>
 
 <header>
-  <h1>📦 Inventur Scanner <span id="build-lbl" style="font-size:11px;font-weight:400;opacity:.55;cursor:default" onclick="onBuildTap()">Build 42</span></h1>
+  <h1>📦 Inventur Scanner <span id="build-lbl" style="font-size:11px;font-weight:400;opacity:.55;cursor:default" onclick="onBuildTap()">Build 43</span></h1>
   <p id="hdr-sub">Keine Inventurdatei geladen</p>
 </header>
 
@@ -690,7 +694,7 @@ function showLager() {
       const price = loc.qoh > 0 && loc.v != null
         ? (loc.v / loc.qoh).toFixed(2)
         : '—';
-      return `<tr class="${cls}"><td>${item}</td><td style="font-size:12px">${e.n}</td><td style="text-align:center">${loc.qoh}</td><td style="text-align:center">${loc.min}</td><td style="text-align:right">${price}</td></tr>`;
+      return `<tr class="${cls} row-link" onclick="goToSearch('${item}')"><td>${item}</td><td style="font-size:12px">${e.n}</td><td style="text-align:center">${loc.qoh}</td><td style="text-align:center">${loc.min}</td><td style="text-align:right">${price}</td></tr>`;
     }).join('');
 
   div.innerHTML = rows
@@ -699,6 +703,19 @@ function showLager() {
         <tbody>${rows}</tbody>
       </table>`
     : '<p style="color:var(--muted);font-size:13px">Keine Artikel für dieses Lager.</p>';
+}
+
+function goToSearch(item) {
+  document.getElementById('srch-inp').value = item;
+  showPage('suche');
+  doSearch();
+}
+
+function goToLager(sub) {
+  const sel = document.getElementById('lager-select');
+  if (sel) sel.value = sub;
+  showPage('lager');
+  showLager();
 }
 
 // ── FILE LOAD ────────────────────────────────────────────────────────────────
@@ -986,7 +1003,7 @@ function doSearch() {
       const full  = wmap[sub] || sub;
       const short = full.replace(/\d{4,5}\s+/, '').replace(/\s*CSP\S+.*$/, '').trim();
       const cls   = ageClass(q, sub);
-      return `<tr class="${cls}">
+      return `<tr class="${cls} row-link" onclick="goToLager('${sub}')">
         <td><strong>${sub}</strong></td>
         <td>${short}</td>
         <td style="text-align:center;font-weight:700">${loc.qoh}</td>
