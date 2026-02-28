@@ -271,7 +271,7 @@
 <body>
 
 <header>
-  <h1>📦 Inventur Scanner <span id="build-lbl" style="font-size:11px;font-weight:400;opacity:.55;cursor:default" onclick="onBuildTap()">Build 38</span></h1>
+  <h1>📦 Inventur Scanner <span id="build-lbl" style="font-size:11px;font-weight:400;opacity:.55;cursor:default" onclick="onBuildTap()">Build 39</span></h1>
   <p id="hdr-sub">Keine Inventurdatei geladen</p>
 </header>
 
@@ -364,7 +364,7 @@
 <div class="page hidden" id="page-suche">
   <span class="back-link" onclick="showPage('inv')">← zurück zur Inventur</span>
   <div class="card">
-    <h2>🔍 Teilsuche</h2>
+    <h2>🔍 Teilsuche <span onclick="openAgeModal()" style="font-size:15px;font-weight:400;cursor:pointer;-webkit-tap-highlight-color:transparent" title="Farblegende">ℹ️</span></h2>
     <p style="font-size:13px;color:var(--muted);margin-bottom:6px">
       Wo liegt welche Menge? QOH = Bestand laut System · MIN = Soll
     </p>
@@ -412,7 +412,7 @@
 <div class="page hidden" id="page-lager">
   <span class="back-link" onclick="showPage('inv')">← zurück zur Inventur</span>
   <div class="card">
-    <h2>🏪 Lagerübersicht</h2>
+    <h2>🏪 Lagerübersicht <span onclick="openAgeModal()" style="font-size:15px;font-weight:400;cursor:pointer;-webkit-tap-highlight-color:transparent" title="Farblegende">ℹ️</span></h2>
     <p id="lager-stand" style="display:none;font-size:11px;color:var(--muted);margin-bottom:12px"></p>
     <div style="margin-bottom:14px">
       <select id="lager-select" style="width:100%;padding:10px 12px;border:2px solid var(--border);border-radius:12px;font-size:15px;background:#fff;color:#1a202c" onchange="showLager()">
@@ -423,6 +423,26 @@
   </div>
 </div>
 
+
+<!-- ══════════════════════════════════════════
+     AGE LEGEND MODAL
+══════════════════════════════════════════ -->
+<div class="modal-bg" id="age-modal" onclick="if(event.target===this)closeAgeModal()">
+  <div class="modal">
+    <div class="modal-title" style="margin-bottom:4px">Farben nach Lagerdauer</div>
+    <div class="modal-sub">AGE RANK aus der Masterlist</div>
+    <div style="display:flex;flex-direction:column;gap:12px;margin:18px 0;font-size:15px;font-weight:600">
+      <div class="age-0">⬤&ensp;&lt; 30 Tage</div>
+      <div class="age-1">⬤&ensp;30–60 Tage</div>
+      <div class="age-2">⬤&ensp;61–90 Tage</div>
+      <div class="age-3">⬤&ensp;91–180 Tage</div>
+      <div class="age-4">⬤&ensp;181–360 Tage</div>
+      <div class="age-5">⬤&ensp;&gt; 360 Tage</div>
+      <div class="age-x">⬤&ensp;Excluded</div>
+    </div>
+    <button class="btn btn-outline" onclick="closeAgeModal()">Schliessen</button>
+  </div>
+</div>
 
 <!-- ══════════════════════════════════════════
      QUANTITY MODAL
@@ -1170,6 +1190,10 @@ function closeQRModal() {
   if (readerQR) { try { readerQR.reset(); } catch (_) {} }
   document.getElementById('qr-modal').classList.remove('open');
 }
+
+// ── AGE LEGEND ────────────────────────────────────────────────────────────────
+function openAgeModal()  { document.getElementById('age-modal').classList.add('open'); }
+function closeAgeModal() { document.getElementById('age-modal').classList.remove('open'); }
 
 // ── FINISH TAB ────────────────────────────────────────────────────────────────
 function renderFinish() {
