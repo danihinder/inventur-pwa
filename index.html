@@ -1,12 +1,12 @@
 <!DOCTYPE html>
-<html lang="de">
+<html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
   <meta name="theme-color" content="#1a56db">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <title>Inventur Scanner</title>
+  <title>Inventory Scanner</title>
   <link rel="manifest" href="manifest.json">
 
   <!-- ZXing: Code128 + QR on iOS & Android -->
@@ -271,8 +271,8 @@
 <body>
 
 <header>
-  <h1>📦 Inventur Scanner <span id="build-lbl" style="font-size:11px;font-weight:400;opacity:.55;cursor:default" onclick="onBuildTap()">Build 43</span></h1>
-  <p id="hdr-sub">Keine Inventurdatei geladen</p>
+  <h1>📦 Inventory Scanner <span id="build-lbl" style="font-size:11px;font-weight:400;opacity:.55;cursor:default" onclick="onBuildTap()">Build 44</span></h1>
+  <p id="hdr-sub">No inventory file loaded</p>
 </header>
 
 <!-- ═══════════════════ PAGE: INVENTUR ═══════════════════ -->
@@ -280,12 +280,12 @@
 
   <!-- LOAD CARD (shown when no file loaded) -->
   <div class="card" id="load-card">
-    <h2>Inventurdatei laden</h2>
+    <h2>Load Inventory File</h2>
     <p style="font-size:13px;color:var(--muted);margin-bottom:14px">
-      "Inventory CHU.xxxx Kundenname.xlsx" aus der E-Mail laden.
+      Open "Inventory CHU.xxxx CustomerName.xlsx" from email.
     </p>
     <button class="btn btn-primary" onclick="document.getElementById('file-inp').click()">
-      📂 XLSX aus E-Mail öffnen
+      📂 Open XLSX from Email
     </button>
     <input type="file" id="file-inp" accept=".xlsx,.xls" class="hidden" onchange="onFileLoad(this)">
     <p id="load-msg" style="font-size:13px;color:var(--muted);margin-top:10px"></p>
@@ -297,15 +297,15 @@
       <div class="pbar"><div class="pfill" id="pfill-stk" style="width:0%"></div></div>
       <div class="ptext" id="ptext-stk">—</div>
       <button class="btn btn-primary" id="btn-cam" style="margin-top:12px" onclick="toggleScan()">
-        📷 Scannen starten
+        📷 Start Scanning
       </button>
     </div>
 
     <!-- Manual entry -->
     <div class="card">
-      <h2 style="margin-bottom:10px">Manuelle Eingabe</h2>
+      <h2 style="margin-bottom:10px">Manual Entry</h2>
       <div class="search-row">
-        <input type="text" id="manual-inp" placeholder="Teilenummer …" inputmode="numeric"
+        <input type="text" id="manual-inp" placeholder="Part number …" inputmode="numeric"
                onkeyup="if(event.key==='Enter')onManualAdd()">
         <button onclick="onManualAdd()">➕</button>
       </div>
@@ -316,15 +316,15 @@
       <span id="age-hint-main" onclick="openAgeModal()" style="display:none;text-align:right;font-size:14px;cursor:pointer;-webkit-tap-highlight-color:transparent;margin-bottom:2px">ℹ️</span>
       <div id="normal-finish-body"></div>
       <button class="btn btn-success" style="margin-top:4px" onclick="shareXLSX()">
-        ⬇️ Ausgefüllte XLSX herunterladen
+        ⬇️ Download Filled XLSX
       </button>
       <div id="share-info-normal" class="hidden" style="background:var(--bg);border-radius:10px;padding:10px 12px;margin-top:8px;font-size:12px;color:var(--muted);line-height:1.8">
-        <div>📧 <strong style="color:#1a202c">An:</strong> servicematerialscontrolling@canon.ch</div>
-        <div>📋 <strong style="color:#1a202c">Betreff:</strong> <span id="share-subject-normal">—</span></div>
+        <div>📧 <strong style="color:#1a202c">To:</strong> servicematerialscontrolling@canon.ch</div>
+        <div>📋 <strong style="color:#1a202c">Subject:</strong> <span id="share-subject-normal">—</span></div>
       </div>
       <hr class="divider">
       <button class="btn btn-danger btn-sm" onclick="resetSession()">
-        🗑 Neue Inventur starten
+        🗑 Start New Inventory
       </button>
     </div>
 
@@ -332,31 +332,31 @@
 
   <!-- Links zu Suche, Merge und Lagerübersicht -->
   <div class="page-links" style="flex-wrap:wrap;gap:14px 24px">
-    <span class="page-link" onclick="showPage('suche')">🔍 Ersatzteilsuche →</span>
+    <span class="page-link" onclick="showPage('suche')">🔍 Part Search →</span>
     <span id="merge-link" class="page-link" style="display:none" onclick="showPage('merge')">🤝 Merge →</span>
-    <span class="page-link" onclick="showPage('lager')">🏪 Lagerübersicht →</span>
+    <span class="page-link" onclick="showPage('lager')">🏪 Warehouse Overview →</span>
   </div>
-  <p id="merge-warn" class="hidden" style="font-size:11px;color:var(--orange);text-align:center;margin:0 0 8px">⚠️ Falls Merge geplant: jetzt zusammenführen, dann weiter scannen</p>
+  <p id="merge-warn" class="hidden" style="font-size:11px;color:var(--orange);text-align:center;margin:0 0 8px">⚠️ If merge planned: merge now, then continue scanning</p>
 </div>
 
 <!-- ═══════════════════ PAGE: TEILSUCHE ═══════════════════ -->
 <div class="page hidden" id="page-suche">
-  <span class="back-link" onclick="showPage('inv')">← zurück zur Inventur</span>
+  <span class="back-link" onclick="showPage('inv')">← back to inventory</span>
   <div class="card">
     <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px">
-      <h2 style="margin-bottom:0">🔍 Teilsuche</h2>
+      <h2 style="margin-bottom:0">🔍 Part Search</h2>
       <span onclick="openAgeModal()" style="font-size:14px;cursor:pointer;-webkit-tap-highlight-color:transparent">ℹ️</span>
     </div>
     <p style="font-size:13px;color:var(--muted);margin-bottom:12px">
-      Wo liegt welche Menge? QOH = Bestand laut System · MIN = Nachschubmenge
+      Where is which quantity? QOH = Stock on hand · MIN = Reorder quantity
     </p>
     <div class="search-row">
-      <input type="text" id="srch-inp" placeholder="Teilenummer …" inputmode="numeric"
+      <input type="text" id="srch-inp" placeholder="Part number …" inputmode="numeric"
              onkeyup="if(event.key==='Enter')doSearch()">
       <button onclick="doSearch()">🔍</button>
     </div>
     <button class="btn btn-outline btn-sm" style="margin-bottom:14px" onclick="startSearchScan()">
-      📷 Barcode scannen
+      📷 Scan Barcode
     </button>
     <div id="srch-result"></div>
   </div>
@@ -364,24 +364,24 @@
 
 <!-- ═══════════════════ PAGE: MERGE ═══════════════════ -->
 <div class="page hidden" id="page-merge">
-  <span class="back-link" onclick="showPage('inv')">← zurück zur Inventur</span>
+  <span class="back-link" onclick="showPage('inv')">← back to inventory</span>
   <div class="card">
-    <h2>🤝 Kollegen-Scan zusammenführen</h2>
+    <h2>🤝 Merge Colleague Scans</h2>
     <p style="font-size:13px;color:var(--muted);margin-bottom:16px">
-      Kollege zeigt seinen QR-Code → du scannst ihn → Mengen werden addiert.
+      Colleague shows their QR code → you scan it → quantities are added.
     </p>
     <button class="btn btn-primary" onclick="startQRImport()">
-      📷 QR-Code des Kollegen scannen
+      📷 Scan Colleague's QR Code
     </button>
 
     <hr class="divider">
 
-    <h2 style="margin-bottom:8px">Meinen Scan teilen</h2>
+    <h2 style="margin-bottom:8px">Share My Scan</h2>
     <p style="font-size:13px;color:var(--muted);margin-bottom:12px">
-      Kollege scannt diesen QR-Code mit der App.
+      Colleague scans this QR code with the app.
     </p>
     <button class="btn btn-outline" onclick="showExportQR()">
-      🔲 QR-Code anzeigen
+      🔲 Show QR Code
     </button>
     <div id="qr-container" class="hidden" style="display:flex;justify-content:center;margin:16px 0"></div>
     <p id="qr-msg" style="font-size:14px;text-align:center;margin-top:8px;font-weight:600"></p>
@@ -391,15 +391,15 @@
 
 <!-- ═══════════════════ PAGE: LAGERÜBERSICHT ═══════════════════ -->
 <div class="page hidden" id="page-lager">
-  <span class="back-link" onclick="showPage('inv')">← zurück zur Inventur</span>
+  <span class="back-link" onclick="showPage('inv')">← back to inventory</span>
   <div class="card">
     <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px">
-      <h2 style="margin-bottom:0">🏪 Lagerübersicht</h2>
+      <h2 style="margin-bottom:0">🏪 Warehouse Overview</h2>
       <span onclick="openAgeModal()" style="font-size:14px;cursor:pointer;-webkit-tap-highlight-color:transparent">ℹ️</span>
     </div>
     <div style="margin-bottom:14px">
       <select id="lager-select" style="width:100%;padding:10px 12px;border:2px solid var(--border);border-radius:12px;font-size:15px;background:#fff;color:#1a202c" onchange="showLager()">
-        <option value="">— Lager wählen —</option>
+        <option value="">— Select Warehouse —</option>
       </select>
     </div>
     <div id="lager-body"></div>
@@ -412,18 +412,18 @@
 ══════════════════════════════════════════ -->
 <div class="modal-bg" id="age-modal" onclick="if(event.target===this)closeAgeModal()">
   <div class="modal">
-    <div class="modal-title" style="margin-bottom:16px">Farben nach Lagerdauer</div>
+    <div class="modal-title" style="margin-bottom:16px">Colors by Storage Duration</div>
     <div style="display:flex;flex-direction:column;gap:12px;margin:18px 0;font-size:15px;font-weight:600">
-      <div class="age-0">⬤&ensp;&lt; 30 Tage</div>
-      <div class="age-1">⬤&ensp;30–60 Tage</div>
-      <div class="age-2">⬤&ensp;61–90 Tage</div>
-      <div class="age-3">⬤&ensp;91–180 Tage</div>
-      <div class="age-4">⬤&ensp;181–360 Tage</div>
-      <div class="age-5">⬤&ensp;&gt; 360 Tage</div>
+      <div class="age-0">⬤&ensp;&lt; 30 days</div>
+      <div class="age-1">⬤&ensp;30–60 days</div>
+      <div class="age-2">⬤&ensp;61–90 days</div>
+      <div class="age-3">⬤&ensp;91–180 days</div>
+      <div class="age-4">⬤&ensp;181–360 days</div>
+      <div class="age-5">⬤&ensp;&gt; 360 days</div>
       <div class="age-x">⬤&ensp;Excluded</div>
     </div>
     <p id="modal-stand" style="display:none;font-size:12px;color:var(--muted);margin-bottom:16px"></p>
-    <button class="btn btn-outline" onclick="closeAgeModal()">Schliessen</button>
+    <button class="btn btn-outline" onclick="closeAgeModal()">Close</button>
   </div>
 </div>
 
@@ -437,20 +437,20 @@
 
     <div class="info-grid" id="qty-info-grid">
       <div class="info-cell">
-        <div class="lbl">Bisher gezählt</div>
+        <div class="lbl">Counted so far</div>
         <div class="val val-neutral" id="m-cur">0</div>
       </div>
       <div class="info-cell info-expert">
-        <div class="lbl">MIN laut System</div>
+        <div class="lbl">MIN per System</div>
         <div class="val val-neutral" id="m-min">—</div>
       </div>
       <div class="info-cell info-expert">
-        <div class="lbl">QOH laut System</div>
+        <div class="lbl">QOH per System</div>
         <div class="val val-neutral" id="m-qoh">—</div>
       </div>
     </div>
 
-    <p style="text-align:center;font-size:14px;color:var(--muted);margin-bottom:8px">Jetzt hinzufügen:</p>
+    <p style="text-align:center;font-size:14px;color:var(--muted);margin-bottom:8px">Add now:</p>
     <div class="qty-row">
       <button class="qty-btn minus" onclick="adjQty(-1)">−</button>
       <div class="qty-input-wrap">
@@ -458,10 +458,10 @@
       </div>
       <button class="qty-btn plus"  onclick="adjQty(+1)">+</button>
     </div>
-    <div class="qty-total">Neu total: <strong id="m-total">1</strong></div>
+    <div class="qty-total">New total: <strong id="m-total">1</strong></div>
 
-    <button class="btn btn-success" onclick="confirmQty()">✓ Hinzufügen</button>
-    <button class="btn btn-outline" style="margin-top:10px" onclick="closeQtyModal()">Abbrechen</button>
+    <button class="btn btn-success" onclick="confirmQty()">✓ Add</button>
+    <button class="btn btn-outline" style="margin-top:10px" onclick="closeQtyModal()">Cancel</button>
   </div>
 </div>
 
@@ -474,11 +474,11 @@
       <video id="video-main" playsinline muted autoplay></video>
     </div>
     <p id="scan-hint" style="text-align:center;color:var(--muted);font-size:13px;padding:10px 0 4px">
-      Barcode mittig in den Rahmen halten …
+      Hold barcode in the center of the frame …
     </p>
     <div style="display:flex;gap:8px;margin-top:4px">
-      <button class="btn btn-sm btn-sound" id="btn-sound-main" onclick="toggleSound()" style="flex:1">🔔 Ton</button>
-      <button class="btn btn-outline btn-sm" style="flex:1" onclick="stopScan()">⏹ Stoppen</button>
+      <button class="btn btn-sm btn-sound" id="btn-sound-main" onclick="toggleSound()" style="flex:1">🔔 Sound</button>
+      <button class="btn btn-outline btn-sm" style="flex:1" onclick="stopScan()">⏹ Stop</button>
     </div>
   </div>
 </div>
@@ -488,9 +488,9 @@
 ══════════════════════════════════════════ -->
 <div class="modal-bg" id="qr-modal">
   <div class="modal">
-    <h2 style="margin-bottom:16px">QR-Code scannen</h2>
+    <h2 style="margin-bottom:16px">Scan QR Code</h2>
     <video id="video-qr" playsinline muted autoplay></video>
-    <button class="btn btn-outline" style="margin-top:16px" onclick="closeQRModal()">Abbrechen</button>
+    <button class="btn btn-outline" style="margin-top:16px" onclick="closeQRModal()">Cancel</button>
   </div>
 </div>
 
@@ -503,11 +503,11 @@
       <video id="video-ss" playsinline muted autoplay></video>
     </div>
     <p style="text-align:center;color:var(--muted);font-size:13px;padding:10px 0 4px">
-      Barcode mittig in den Rahmen halten …
+      Hold barcode in the center of the frame …
     </p>
     <div style="display:flex;gap:8px;margin-top:4px">
-      <button class="btn btn-sm btn-sound" id="btn-sound-ss" onclick="toggleSound()" style="flex:1">🔔 Ton</button>
-      <button class="btn btn-outline btn-sm" style="flex:1" onclick="closeSSModal()">Abbrechen</button>
+      <button class="btn btn-sm btn-sound" id="btn-sound-ss" onclick="toggleSound()" style="flex:1">🔔 Sound</button>
+      <button class="btn btn-outline btn-sm" style="flex:1" onclick="closeSSModal()">Cancel</button>
     </div>
   </div>
 </div>
@@ -665,11 +665,11 @@ function initLager() {
   const stand = S.ml._stand || '';
   if (stand) {
     const el = document.getElementById('modal-stand');
-    if (el) { el.textContent = 'Stand der Daten: ' + stand; el.style.display = ''; }
+    if (el) { el.textContent = 'Data as of: ' + stand; el.style.display = ''; }
   }
   const sel = document.getElementById('lager-select');
   if (!sel || !S.ml._w) return;
-  sel.innerHTML = '<option value="">— Lager wählen —</option>';
+  sel.innerHTML = '<option value="">— Select Warehouse —</option>';
   const entries = Object.entries(S.ml._w).sort((a, b) => a[1].localeCompare(b[1]));
   for (const [sub, name] of entries) {
     const opt = document.createElement('option');
@@ -699,10 +699,10 @@ function showLager() {
 
   div.innerHTML = rows
     ? `<table class="rtable">
-        <thead><tr><th>Nummer</th><th>Bezeichnung</th><th style="text-align:center">QOH</th><th style="text-align:center">MIN</th><th style="text-align:right">Preis/Stk</th></tr></thead>
+        <thead><tr><th>Number</th><th>Description</th><th style="text-align:center">QOH</th><th style="text-align:center">MIN</th><th style="text-align:right">Price/Unit</th></tr></thead>
         <tbody>${rows}</tbody>
       </table>`
-    : '<p style="color:var(--muted);font-size:13px">Keine Artikel für dieses Lager.</p>';
+    : '<p style="color:var(--muted);font-size:13px">No items for this warehouse.</p>';
 }
 
 function goToSearch(item) {
@@ -723,7 +723,7 @@ async function onFileLoad(input) {
   const file = input.files[0];
   if (!file) return;
   const msg = document.getElementById('load-msg');
-  msg.textContent = 'Lade …';
+  msg.textContent = 'Loading …';
   await _loadXlsx(await file.arrayBuffer(), file.name, msg);
   input.value = '';
 }
@@ -744,7 +744,7 @@ async function _loadXlsx(buf, filename, msg) {
     const iBez = hdr.indexOf('Bezeichnung');
     const iSub = hdr.indexOf('Subinventory');
 
-    if (iItm < 0) throw new Error('Spalte "Item" nicht gefunden – falsche Datei?');
+    if (iItm < 0) throw new Error('Column "Item" not found – wrong file?');
 
     S.inv = [];
     for (let r = 1; r < raw.length; r++) {
@@ -778,7 +778,7 @@ async function _loadXlsx(buf, filename, msg) {
     if (msg) msg.textContent = '';
 
   } catch (e) {
-    if (msg) msg.textContent = 'Fehler: ' + e.message;
+    if (msg) msg.textContent = 'Error: ' + e.message;
   }
 }
 
@@ -804,13 +804,13 @@ function updateUI() {
 
   document.getElementById('pfill-stk').style.width = totalQoh ? (scannedQoh / totalQoh * 100) + '%' : '0%';
   document.getElementById('ptext-stk').textContent = expertMode
-    ? (totalQoh ? `${scannedQoh} von ${totalQoh} Stk. korrekt im Lager` : '—')
+    ? (totalQoh ? `${scannedQoh} of ${totalQoh} units in stock` : '—')
     : '';
 
   const sub = document.getElementById('hdr-sub');
   sub.textContent = S.wh
     ? `${S.wh}  ·  ${S.whName || ''}`
-    : 'Keine Inventurdatei geladen';
+    : 'No inventory file loaded';
 
   const subject = S.fname ? S.fname.replace(/\.xlsx?$/i, '') : '—';
   const subEl = document.getElementById('share-subject-normal');
@@ -827,7 +827,7 @@ function updateUI() {
 // ── SOUND + HAPTIC ────────────────────────────────────────────────────────────
 function updateSoundButtons() {
   document.querySelectorAll('.btn-sound').forEach(btn => {
-    btn.textContent = soundOn ? '🔔 Ton an' : '🔕 Ton aus';
+    btn.textContent = soundOn ? '🔔 Sound on' : '🔕 Sound off';
     btn.classList.toggle('off', !soundOn);
   });
 }
@@ -866,7 +866,7 @@ async function toggleScan() {
   if (modal.classList.contains('open')) { stopScan(); return; }
 
   modal.classList.add('open');
-  document.getElementById('btn-cam').textContent = '⏹ Scannen stoppen';
+  document.getElementById('btn-cam').textContent = '⏹ Stop Scanning';
 
   // AudioContext vorab anlegen (User-Gesture vorhanden)
   if (soundOn && !audioCtx) {
@@ -881,7 +881,7 @@ async function toggleScan() {
       (result) => { if (result) handleCode(result.getText()); }
     );
   } catch (e) {
-    alert('Kamera-Fehler: ' + e.message);
+    alert('Camera error: ' + e.message);
     stopScan();
   }
 }
@@ -889,7 +889,7 @@ async function toggleScan() {
 function stopScan() {
   if (reader1D) { try { reader1D.reset(); } catch (_) {} }
   document.getElementById('scan-modal').classList.remove('open');
-  document.getElementById('btn-cam').textContent = '📷 Scannen starten';
+  document.getElementById('btn-cam').textContent = '📷 Start Scanning';
 }
 
 function handleCode(code) {
@@ -907,7 +907,7 @@ function handleCode(code) {
 
   const invItem = S.inv?.find(i => i.item === code);
   const name = invItem?.bez || S.ml?.i?.[code]?.n || '';
-  document.getElementById('scan-hint').textContent = name ? `${code}  ·  ${name}` : `Erkannt: ${code}`;
+  document.getElementById('scan-hint').textContent = name ? `${code}  ·  ${name}` : `Detected: ${code}`;
   playBeep();
   if (soundOn && navigator.vibrate) navigator.vibrate(60);
   openQtyModal(code);
@@ -926,7 +926,7 @@ function onManualAdd() {
 function openQtyModal(code) {
   pendingCode = code;
   const invItem = S.inv?.find(i => i.item === code);
-  const name    = invItem?.bez || S.ml?.i?.[code]?.n || '(nicht in Inventurliste)';
+  const name    = invItem?.bez || S.ml?.i?.[code]?.n || '(not in inventory list)';
   const current = S.scanned[code] || 0;
 
   let minV = '—', qohV = '—';
@@ -986,13 +986,13 @@ function doSearch() {
   if (!q) return;
 
   if (!S.ml?.i) {
-    div.innerHTML = '<p style="color:var(--red)">Masterlist nicht geladen.</p>';
+    div.innerHTML = '<p style="color:var(--red)">Masterlist not loaded.</p>';
     return;
   }
 
   const entry = S.ml.i[q];
   if (!entry) {
-    div.innerHTML = `<p style="color:var(--muted)">Kein Eintrag für <strong>${q}</strong> gefunden.</p>`;
+    div.innerHTML = `<p style="color:var(--muted)">No entry found for <strong>${q}</strong>.</p>`;
     return;
   }
 
@@ -1052,7 +1052,7 @@ async function startSearchScan() {
         doSearch();
       });
   } catch (e) {
-    alert('Kamera-Fehler: ' + e.message);
+    alert('Camera error: ' + e.message);
     modal.classList.remove('open');
   }
 }
@@ -1069,11 +1069,11 @@ async function showExportQR() {
   container.innerHTML = '';
   container.classList.add('hidden');
   msg.style.color = 'var(--muted)';
-  msg.textContent = 'Generiere …';
+  msg.textContent = 'Generating …';
 
   if (typeof QRCode === 'undefined') {
     msg.style.color = 'var(--red)';
-    msg.textContent = 'QR-Bibliothek nicht geladen – Internet prüfen und Seite neu laden.';
+    msg.textContent = 'QR library not loaded – check internet and reload page.';
     return;
   }
 
@@ -1096,7 +1096,7 @@ async function showExportQR() {
 
   if (size > 2953) {
     msg.style.color = 'var(--red)';
-    msg.textContent = `Zu gross (${size} Zeichen, max. 2953) – Datei teilen.`;
+    msg.textContent = `Too large (${size} chars, max. 2953) – share file instead.`;
     return;
   }
 
@@ -1110,10 +1110,10 @@ async function showExportQR() {
     });
     container.classList.remove('hidden');
     msg.style.color = 'var(--muted)';
-    msg.textContent = `${nItems} Artikel · ${size} Zeichen`;
+    msg.textContent = `${nItems} items · ${size} chars`;
   } catch (e) {
     msg.style.color = 'var(--red)';
-    msg.textContent = 'Fehler: ' + e.message;
+    msg.textContent = 'Error: ' + e.message;
   }
 }
 
@@ -1134,7 +1134,7 @@ async function startQRImport() {
         await mergeQRPayload(result.getText());
       });
   } catch (e) {
-    alert('Kamera-Fehler: ' + e.message);
+    alert('Camera error: ' + e.message);
     modal.classList.remove('open');
   }
 }
@@ -1162,9 +1162,9 @@ async function mergeQRPayload(text) {
     }
     saveSession();
     updateUI();
-    alert(`${n} Positionen vom Kollegen hinzugefügt!`);
+    alert(`${n} items added from colleague!`);
   } catch (e) {
-    alert('QR-Fehler: ' + e.message);
+    alert('QR error: ' + e.message);
   }
 }
 
@@ -1181,7 +1181,7 @@ function closeAgeModal() { document.getElementById('age-modal').classList.remove
 function renderFinish() {
   const div = document.getElementById('finish-body');
   if (!S.inv) {
-    div.innerHTML = '<p style="color:var(--muted)">Keine Inventur geladen.</p>';
+    div.innerHTML = '<p style="color:var(--muted)">No inventory loaded.</p>';
     return;
   }
 
@@ -1215,7 +1215,7 @@ function renderFinish() {
           ? `<td style="text-align:center;font-weight:700;color:var(--red)">${i.deficit}</td>`
           : `<td style="text-align:center;color:var(--muted)">—</td>`)
       : '';
-    const scText = i.sc > 0 ? ` <span style="color:var(--orange);font-size:11px">(${i.sc} gez.)</span>` : '';
+    const scText = i.sc > 0 ? ` <span style="color:var(--orange);font-size:11px">(${i.sc} cnt.)</span>` : '';
     return `<tr class="${ageClass(i.item, S.wh)}"><td>${i.item}${scText}</td><td style="font-size:12px">${i.bez}</td>${defCell}</tr>`;
   }).join('');
 
@@ -1261,43 +1261,43 @@ function renderFinish() {
 
   div.innerHTML = `
     <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px;text-align:center">
-      <div><div style="font-size:28px;font-weight:800;color:var(--green)">${scannedStk}</div><div style="font-size:11px;color:var(--muted)">Gezählt</div></div>
-      <div><div style="font-size:28px;font-weight:800;color:var(--red)">${totalDeficit}</div><div style="font-size:11px;color:var(--muted)">Fehlend</div></div>
+      <div><div style="font-size:28px;font-weight:800;color:var(--green)">${scannedStk}</div><div style="font-size:11px;color:var(--muted)">Counted</div></div>
+      <div><div style="font-size:28px;font-weight:800;color:var(--red)">${totalDeficit}</div><div style="font-size:11px;color:var(--muted)">Missing</div></div>
       <div><div style="font-size:28px;font-weight:800;color:var(--orange)">${extraStk}</div><div style="font-size:11px;color:var(--muted)">Extra</div></div>
     </div>
 
     ${scannedRows ? `
     <details style="margin-top:8px">
-      <summary style="font-weight:600;color:var(--green)">Gezählte Artikel (${Object.keys(S.scanned).length} Pos.)</summary>
+      <summary style="font-weight:600;color:var(--green)">Counted Items (${Object.keys(S.scanned).length} pos.)</summary>
       <table class="rtable" style="margin-top:8px">
-        <thead><tr><th>Item-Nr.</th><th>Bezeichnung</th>${expertMode ? '<th style="text-align:center">QOH</th>' : ''}<th style="text-align:center">Gezählt</th></tr></thead>
+        <thead><tr><th>Item No.</th><th>Description</th>${expertMode ? '<th style="text-align:center">QOH</th>' : ''}<th style="text-align:center">Counted</th></tr></thead>
         <tbody>${scannedRows}</tbody>
       </table>
     </details>` : ''}
 
     ${missingItems.length ? `
     <details style="margin-top:8px">
-      <summary style="font-weight:600;color:var(--red)">Fehlende Artikel (${missingItems.length} Pos. · ${totalDeficit} Stk.)</summary>
+      <summary style="font-weight:600;color:var(--red)">Missing Items (${missingItems.length} pos. · ${totalDeficit} units)</summary>
       <table class="rtable" style="margin-top:8px">
-        <thead><tr><th>Item-Nr.</th><th>Bezeichnung</th>${expertMode ? '<th style="text-align:center">noch fehlend</th>' : ''}</tr></thead>
+        <thead><tr><th>Item No.</th><th>Description</th>${expertMode ? '<th style="text-align:center">still missing</th>' : ''}</tr></thead>
         <tbody>${missRows}</tbody>
       </table>
     </details>` : ''}
 
     ${expertMode && overItems.length ? `
     <details style="margin-top:8px">
-      <summary style="font-weight:600;color:var(--blue)">Überbestand (${overItems.length} Pos.)</summary>
+      <summary style="font-weight:600;color:var(--blue)">Overstock (${overItems.length} pos.)</summary>
       <table class="rtable" style="margin-top:8px">
-        <thead><tr><th>Item-Nr.</th><th>Bezeichnung</th><th style="text-align:center">QOH</th><th style="text-align:center">Gezählt</th><th style="text-align:center">Überschuss</th></tr></thead>
+        <thead><tr><th>Item No.</th><th>Description</th><th style="text-align:center">QOH</th><th style="text-align:center">Counted</th><th style="text-align:center">Excess</th></tr></thead>
         <tbody>${overRows}</tbody>
       </table>
     </details>` : ''}
 
     ${extra.length ? `
     <details style="margin-top:8px">
-      <summary style="font-weight:600;color:var(--orange)">Extra-Artikel (${extra.length} Pos. · ${extraStk} Stk.)</summary>
+      <summary style="font-weight:600;color:var(--orange)">Extra Items (${extra.length} pos. · ${extraStk} units)</summary>
       <table class="rtable" style="margin-top:8px">
-        <thead><tr><th>Item-Nr.</th><th>Bezeichnung</th><th>Anzahl</th></tr></thead>
+        <thead><tr><th>Item No.</th><th>Description</th><th>Qty</th></tr></thead>
         <tbody>${xtraRows}</tbody>
       </table>
     </details>` : ''}
@@ -1336,13 +1336,13 @@ function renderNormalFinish() {
 
   div.innerHTML = rows
     ? `<details open style="margin-bottom:14px">
-        <summary style="font-weight:600;color:var(--green)">Gezählte Artikel (${Object.keys(S.scanned).length} Pos.)</summary>
+        <summary style="font-weight:600;color:var(--green)">Counted Items (${Object.keys(S.scanned).length} pos.)</summary>
         <table class="rtable" style="margin-top:8px">
-          <thead><tr><th>Item-Nr.</th><th>Bezeichnung</th><th style="text-align:center">Gezählt</th></tr></thead>
+          <thead><tr><th>Item No.</th><th>Description</th><th style="text-align:center">Counted</th></tr></thead>
           <tbody>${rows}</tbody>
         </table>
       </details>`
-    : '<p style="color:var(--muted);font-size:13px;margin:8px 0">Noch keine Artikel gezählt.</p>';
+    : '<p style="color:var(--muted);font-size:13px;margin:8px 0">No items counted yet.</p>';
 }
 
 function updateScanned(item, val) {
@@ -1356,7 +1356,7 @@ function updateScanned(item, val) {
 // ── XLSX AUFBEREITEN (gemeinsam für Download + Share) ─────────────────────────
 async function _buildFilledXlsx() {
   if (!S.fdata) {
-    if (!S.fdataB64) throw new Error('Originaldatei nicht verfügbar. Bitte XLSX neu laden.');
+    if (!S.fdataB64) throw new Error('Original file not available. Please reload XLSX.');
     S.fdata = b64ToBuffer(S.fdataB64);
   }
   const wb     = XLSX.read(S.fdata, { type: 'array' });
@@ -1369,7 +1369,7 @@ async function _buildFilledXlsx() {
   const iGez   = hdr.indexOf('Gezählt');
   const iBez   = hdr.indexOf('Bezeichnung');
 
-  if (iGez < 0) throw new Error('"Gezählt"-Spalte nicht gefunden.');
+  if (iGez < 0) throw new Error('"Gezählt" column not found.');
 
   for (let r = 1; r < raw.length; r++) {
     const itm = String(raw[r][iItm] || '').trim();
@@ -1394,7 +1394,7 @@ async function _buildFilledXlsx() {
   }
   ws['!ref'] = XLSX.utils.encode_range({ r: 0, c: 0 }, { r: lastR - 1, c: hdr.length - 1 });
 
-  const outName = (S.fname || 'Inventur').replace(/\.xlsx?$/i, '') + '_ausgefüllt.xlsx';
+  const outName = (S.fname || 'Inventory').replace(/\.xlsx?$/i, '') + '_filled.xlsx';
   return { wb, outName };
 }
 
@@ -1403,7 +1403,7 @@ async function downloadXLSX() {
   try {
     const { wb, outName } = await _buildFilledXlsx();
     XLSX.writeFile(wb, outName);
-  } catch (e) { alert('Fehler: ' + e.message); }
+  } catch (e) { alert('Error: ' + e.message); }
 }
 
 // ── SHARE XLSX ────────────────────────────────────────────────────────────────
@@ -1425,13 +1425,13 @@ async function shareXLSX() {
       XLSX.writeFile(wb, outName);
     }
   } catch (e) {
-    if (e.name !== 'AbortError') alert('Fehler: ' + e.message);
+    if (e.name !== 'AbortError') alert('Error: ' + e.message);
   }
 }
 
 // ── RESET ────────────────────────────────────────────────────────────────────
 function resetSession() {
-  if (!confirm('Aktuelle Inventur löschen und neu starten?')) return;
+  if (!confirm('Delete current inventory and start fresh?')) return;
   stopScan();
   S.inv = S.fdata = S.fdataB64 = S.fname = S.wh = S.whName = null;
   S.scanned = {};
@@ -1439,7 +1439,7 @@ function resetSession() {
   document.getElementById('load-card').classList.remove('hidden');
   document.getElementById('scan-card').classList.add('hidden');
   document.getElementById('merge-link').style.display = 'none';
-  document.getElementById('hdr-sub').textContent = 'Keine Inventurdatei geladen';
+  document.getElementById('hdr-sub').textContent = 'No inventory file loaded';
   showPage('inv');
 }
 
@@ -1480,7 +1480,7 @@ let swRefreshing = false;
 
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('./sw.js')
-    .catch(e => console.warn('SW Registrierung fehlgeschlagen:', e));
+    .catch(e => console.warn('SW registration failed:', e));
 
   navigator.serviceWorker.addEventListener('controllerchange', () => {
     if (!swRefreshing) { swRefreshing = true; location.reload(); }

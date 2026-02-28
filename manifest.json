@@ -1,7 +1,7 @@
 {
-  "name": "Inventur Scanner",
-  "short_name": "Inventur",
-  "description": "Barcode-Scanner für Lagerinventuren – Canon CH",
+  "name": "Inventory Scanner",
+  "short_name": "Inventory",
+  "description": "Barcode scanner for warehouse inventory – Canon CH",
   "start_url": "./",
   "display": "standalone",
   "background_color": "#f0f4f8",
