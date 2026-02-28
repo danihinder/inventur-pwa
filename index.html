@@ -267,7 +267,7 @@
 <body>
 
 <header>
-  <h1>📦 Inventur Scanner <span id="build-lbl" style="font-size:11px;font-weight:400;opacity:.55;cursor:default" onclick="onBuildTap()">Build 41</span></h1>
+  <h1>📦 Inventur Scanner <span id="build-lbl" style="font-size:11px;font-weight:400;opacity:.55;cursor:default" onclick="onBuildTap()">Build 42</span></h1>
   <p id="hdr-sub">Keine Inventurdatei geladen</p>
 </header>
 
@@ -309,7 +309,7 @@
 
     <!-- Gezählte Artikel + Aktionen -->
     <div id="normal-finish-section">
-      <span onclick="openAgeModal()" style="display:block;text-align:right;font-size:12px;color:var(--blue);cursor:pointer;-webkit-tap-highlight-color:transparent;margin-bottom:2px">ℹ️ Farblegende</span>
+      <span id="age-hint-main" onclick="openAgeModal()" style="display:none;text-align:right;font-size:14px;cursor:pointer;-webkit-tap-highlight-color:transparent;margin-bottom:2px">ℹ️</span>
       <div id="normal-finish-body"></div>
       <button class="btn btn-success" style="margin-top:4px" onclick="shareXLSX()">
         ⬇️ Ausgefüllte XLSX herunterladen
@@ -341,7 +341,7 @@
   <div class="card">
     <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px">
       <h2 style="margin-bottom:0">🔍 Teilsuche</h2>
-      <span onclick="openAgeModal()" style="font-size:12px;color:var(--blue);cursor:pointer;-webkit-tap-highlight-color:transparent">ℹ️ Farblegende</span>
+      <span onclick="openAgeModal()" style="font-size:14px;cursor:pointer;-webkit-tap-highlight-color:transparent">ℹ️</span>
     </div>
     <p style="font-size:13px;color:var(--muted);margin-bottom:12px">
       Wo liegt welche Menge? QOH = Bestand laut System · MIN = Nachschubmenge
@@ -391,7 +391,7 @@
   <div class="card">
     <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px">
       <h2 style="margin-bottom:0">🏪 Lagerübersicht</h2>
-      <span onclick="openAgeModal()" style="font-size:12px;color:var(--blue);cursor:pointer;-webkit-tap-highlight-color:transparent">ℹ️ Farblegende</span>
+      <span onclick="openAgeModal()" style="font-size:14px;cursor:pointer;-webkit-tap-highlight-color:transparent">ℹ️</span>
     </div>
     <div style="margin-bottom:14px">
       <select id="lager-select" style="width:100%;padding:10px 12px;border:2px solid var(--border);border-radius:12px;font-size:15px;background:#fff;color:#1a202c" onchange="showLager()">
@@ -1313,6 +1313,9 @@ function renderNormalFinish() {
     <td style="font-size:12px">${i.bez}</td>
     <td style="text-align:center"><input type="number" min="0" value="${i.sc}" style="${inpStyle}" onchange="updateScanned('${i.item}',this.value)"></td>
   </tr>`).join('');
+
+  const hint = document.getElementById('age-hint-main');
+  if (hint) hint.style.display = rows ? 'block' : 'none';
 
   div.innerHTML = rows
     ? `<details open style="margin-bottom:14px">
