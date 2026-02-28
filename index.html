@@ -270,7 +270,7 @@
 <body>
 
 <header>
-  <h1>📦 Inventory Scanner <span id="build-lbl" style="font-size:11px;font-weight:400;opacity:.55;cursor:default" onclick="onBuildTap()">Build 46</span></h1>
+  <h1>📦 Inventory Scanner <span id="build-lbl" style="font-size:11px;font-weight:400;opacity:.55;cursor:default" onclick="onBuildTap()">Build 47</span></h1>
 </header>
 
 <!-- ═══════════════════ PAGE: INVENTUR ═══════════════════ -->
@@ -365,7 +365,7 @@
 
 <!-- ═══════════════════ PAGE: MERGE ═══════════════════ -->
 <div class="page hidden" id="page-merge">
-  <span class="back-link" onclick="showPage('inv')">← back to inventory</span>
+  <span class="back-link" onclick="clearMergeQR(); showPage('inv')">← back to inventory</span>
   <div class="card">
     <h2>🤝 Merge Colleague Scans</h2>
     <p style="font-size:13px;color:var(--muted);margin-bottom:16px">
@@ -1175,6 +1175,14 @@ function closeQRModal() {
   document.getElementById('qr-modal').classList.remove('open');
 }
 
+// ── MERGE QR CLEAR ────────────────────────────────────────────────────────────
+function clearMergeQR() {
+  const c = document.getElementById('qr-container');
+  c.innerHTML = '';
+  c.classList.add('hidden');
+  document.getElementById('qr-msg').textContent = '';
+}
+
 // ── AGE LEGEND ────────────────────────────────────────────────────────────────
 function openAgeModal()  { document.getElementById('age-modal').classList.add('open'); }
 function closeAgeModal() { document.getElementById('age-modal').classList.remove('open'); }
@@ -1314,37 +1322,106 @@ function renderNormalFinish() {
     .filter(([k]) => !S.inv.find(i => i.item === k));
 
   const inpStyle = 'width:58px;text-align:center;border:1px solid var(--border);border-radius:6px;padding:2px 4px;font-size:14px';
-  const rows = [
+  const countedRows = [
     ...S.inv
       .filter(i => (S.scanned[i.item] || 0) > 0)
       .map(i => ({
         item: i.item,
         bez:  i.bez || S.ml?.i?.[i.item]?.n || '',
+        qoh:  S.ml?.i?.[i.item]?.l?.[S.wh]?.qoh ?? null,
         sc:   S.scanned[i.item],
       })),
     ...extra.map(([k, v]) => ({
       item: k,
       bez:  S.ml?.i?.[k]?.n || '',
+      qoh:  null,
       sc:   v,
     })),
-  ].map(i => `<tr class="${ageClass(i.item, S.wh)}">
-    <td>${i.item}</td>
-    <td style="font-size:12px">${i.bez}</td>
-    <td style="text-align:center"><input type="number" min="0" value="${i.sc}" style="${inpStyle}" onchange="updateScanned('${i.item}',this.value)"></td>
-  </tr>`).join('');
+  ].map(i => {
+    const qohCell = expertMode
+      ? (i.qoh !== null
+          ? `<td style="text-align:center">${i.qoh}</td>`
+          : `<td style="text-align:center;color:var(--muted)">—</td>`)
+      : '';
+    return `<tr class="${ageClass(i.item, S.wh)}">
+      <td>${i.item}</td>
+      <td style="font-size:12px">${i.bez}</td>
+      ${qohCell}
+      <td style="text-align:center"><input type="number" min="0" value="${i.sc}" style="${inpStyle}" onchange="updateScanned('${i.item}',this.value)"></td>
+    </tr>`;
+  }).join('');
 
   const hint = document.getElementById('age-hint-main');
-  if (hint) hint.style.display = rows ? 'block' : 'none';
+  if (hint) hint.style.display = countedRows ? 'block' : 'none';
 
-  div.innerHTML = rows
+  let html = countedRows
     ? `<details open style="margin-bottom:14px">
         <summary style="font-weight:600;color:var(--green)">Counted Items (${Object.keys(S.scanned).length} pos.)</summary>
         <table class="rtable" style="margin-top:8px">
-          <thead><tr><th>Item No.</th><th>Description</th><th style="text-align:center">Counted</th></tr></thead>
-          <tbody>${rows}</tbody>
+          <thead><tr><th>Item No.</th><th>Description</th>${expertMode ? '<th style="text-align:center">QOH</th>' : ''}<th style="text-align:center">Counted</th></tr></thead>
+          <tbody>${countedRows}</tbody>
         </table>
       </details>`
     : '<p style="color:var(--muted);font-size:13px;margin:8px 0">No items counted yet.</p>';
+
+  if (expertMode) {
+    const missingItems = [], overItems = [];
+    let totalDeficit = 0;
+    for (const i of S.inv) {
+      const sc      = S.scanned[i.item] || 0;
+      const qoh     = S.ml?.i?.[i.item]?.l?.[S.wh]?.qoh ?? null;
+      const target  = qoh !== null ? qoh : 1;
+      const deficit = Math.max(0, target - sc);
+      if (deficit > 0) { totalDeficit += deficit; missingItems.push({ ...i, sc, qoh, deficit }); }
+      else if (qoh !== null && sc > qoh) { overItems.push({ ...i, sc, qoh, excess: sc - qoh }); }
+    }
+
+    if (missingItems.length) {
+      const missRows = missingItems.map(i => {
+        const scText = i.sc > 0 ? ` <span style="color:var(--orange);font-size:11px">(${i.sc} cnt.)</span>` : '';
+        const defCell = i.qoh !== null
+          ? `<td style="text-align:center;font-weight:700;color:var(--red)">${i.deficit}</td>`
+          : `<td style="text-align:center;color:var(--muted)">—</td>`;
+        return `<tr class="${ageClass(i.item, S.wh)}"><td>${i.item}${scText}</td><td style="font-size:12px">${i.bez}</td>${defCell}</tr>`;
+      }).join('');
+      html += `<details style="margin-bottom:14px">
+        <summary style="font-weight:600;color:var(--red)">Missing Items (${missingItems.length} pos. · ${totalDeficit} units)</summary>
+        <table class="rtable" style="margin-top:8px">
+          <thead><tr><th>Item No.</th><th>Description</th><th style="text-align:center">still missing</th></tr></thead>
+          <tbody>${missRows}</tbody>
+        </table>
+      </details>`;
+    }
+
+    if (overItems.length) {
+      const overRows = overItems.map(i =>
+        `<tr class="${ageClass(i.item, S.wh)}"><td>${i.item}</td><td style="font-size:12px">${i.bez}</td><td style="text-align:center">${i.qoh}</td><td style="text-align:center;font-weight:700;color:var(--blue)">${i.sc}</td><td style="text-align:center;font-weight:700;color:var(--orange)">${i.excess}</td></tr>`
+      ).join('');
+      html += `<details style="margin-bottom:14px">
+        <summary style="font-weight:600;color:var(--blue)">Overstock (${overItems.length} pos.)</summary>
+        <table class="rtable" style="margin-top:8px">
+          <thead><tr><th>Item No.</th><th>Description</th><th style="text-align:center">QOH</th><th style="text-align:center">Counted</th><th style="text-align:center">Excess</th></tr></thead>
+          <tbody>${overRows}</tbody>
+        </table>
+      </details>`;
+    }
+
+    if (extra.length) {
+      const extraStk = extra.reduce((s, [, v]) => s + v, 0);
+      const xtraRows = extra.map(([k, v]) =>
+        `<tr class="${ageClass(k, S.wh)}"><td>${k}</td><td style="font-size:12px">${S.ml?.i?.[k]?.n || ''}</td><td style="text-align:center">${v}</td></tr>`
+      ).join('');
+      html += `<details style="margin-bottom:14px">
+        <summary style="font-weight:600;color:var(--orange)">Extra Items (${extra.length} pos. · ${extraStk} units)</summary>
+        <table class="rtable" style="margin-top:8px">
+          <thead><tr><th>Item No.</th><th>Description</th><th>Qty</th></tr></thead>
+          <tbody>${xtraRows}</tbody>
+        </table>
+      </details>`;
+    }
+  }
+
+  div.innerHTML = html;
 }
 
 function updateScanned(item, val) {
