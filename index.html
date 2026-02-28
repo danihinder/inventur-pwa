@@ -257,13 +257,21 @@
     #expert-finish-section { display: none; }
     body.expert-mode #expert-finish-section { display: block; }
 
+    /* ── AGE RANK COLORS ── */
+    .age-x, .age-0 { color: #1a202c; }
+    .age-1 { color: #4a5568; }
+    .age-2 { color: #718096; }
+    .age-3 { color: #8a9ab0; }
+    .age-4 { color: #a0b0c0; }
+    .age-5 { color: #b5c4cf; }
+
   </style>
 </head>
 
 <body>
 
 <header>
-  <h1>📦 Inventur Scanner <span id="build-lbl" style="font-size:11px;font-weight:400;opacity:.55;cursor:default" onclick="onBuildTap()">Build 37</span></h1>
+  <h1>📦 Inventur Scanner <span id="build-lbl" style="font-size:11px;font-weight:400;opacity:.55;cursor:default" onclick="onBuildTap()">Build 38</span></h1>
   <p id="hdr-sub">Keine Inventurdatei geladen</p>
 </header>
 
@@ -344,10 +352,11 @@
     </div>
   </div>
 
-  <!-- Links zu Suche und Merge -->
-  <div class="page-links">
+  <!-- Links zu Suche, Merge und Lagerübersicht -->
+  <div class="page-links" style="flex-wrap:wrap;gap:14px 24px">
     <span class="page-link" onclick="showPage('suche')">🔍 Ersatzteilsuche →</span>
     <span class="page-link" onclick="showPage('merge')">🤝 Merge →</span>
+    <span class="page-link" onclick="showPage('lager')">🏪 Lagerübersicht →</span>
   </div>
 </div>
 
@@ -356,9 +365,10 @@
   <span class="back-link" onclick="showPage('inv')">← zurück zur Inventur</span>
   <div class="card">
     <h2>🔍 Teilsuche</h2>
-    <p style="font-size:13px;color:var(--muted);margin-bottom:12px">
+    <p style="font-size:13px;color:var(--muted);margin-bottom:6px">
       Wo liegt welche Menge? QOH = Bestand laut System · MIN = Soll
     </p>
+    <p id="suche-stand" style="display:none;font-size:11px;color:var(--muted);margin-bottom:12px"></p>
     <div class="search-row">
       <input type="text" id="srch-inp" placeholder="Teilenummer …" inputmode="numeric"
              onkeyup="if(event.key==='Enter')doSearch()">
@@ -394,6 +404,22 @@
     </button>
     <div id="qr-container" class="hidden" style="display:flex;justify-content:center;margin:16px 0"></div>
     <p id="qr-msg" style="font-size:14px;text-align:center;margin-top:8px;font-weight:600"></p>
+  </div>
+</div>
+
+
+<!-- ═══════════════════ PAGE: LAGERÜBERSICHT ═══════════════════ -->
+<div class="page hidden" id="page-lager">
+  <span class="back-link" onclick="showPage('inv')">← zurück zur Inventur</span>
+  <div class="card">
+    <h2>🏪 Lagerübersicht</h2>
+    <p id="lager-stand" style="display:none;font-size:11px;color:var(--muted);margin-bottom:12px"></p>
+    <div style="margin-bottom:14px">
+      <select id="lager-select" style="width:100%;padding:10px 12px;border:2px solid var(--border);border-radius:12px;font-size:15px;background:#fff;color:#1a202c" onchange="showLager()">
+        <option value="">— Lager wählen —</option>
+      </select>
+    </div>
+    <div id="lager-body"></div>
   </div>
 </div>
 
@@ -569,6 +595,13 @@ function applyMode() {
   }
 }
 
+function ageClass(item, wh) {
+  const a = S.ml?.i?.[item]?.l?.[wh]?.a;
+  if (a == null) return '';
+  if (a === -1) return 'age-x';
+  return a >= 0 && a <= 5 ? 'age-' + a : '';
+}
+
 // ── INIT ─────────────────────────────────────────────────────────────────────
 (async () => {
   // Load masterlist from GitHub Pages
@@ -576,6 +609,7 @@ function applyMode() {
     const r = await fetch(MASTERLIST_URL);
     if (r.ok) S.ml = await r.json();
   } catch (e) { console.warn('masterlist not loaded:', e); }
+  initLager();
 
   // Restore session
   try {
@@ -624,6 +658,53 @@ function showPage(name) {
   const page = document.getElementById('page-' + name);
   page.classList.remove('hidden');
   page.classList.add('active');
+}
+
+function initLager() {
+  if (!S.ml) return;
+  const stand = S.ml._stand || '';
+  if (stand) {
+    ['suche-stand', 'lager-stand'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) { el.textContent = 'Stand: ' + stand; el.style.display = ''; }
+    });
+  }
+  const sel = document.getElementById('lager-select');
+  if (!sel || !S.ml._w) return;
+  sel.innerHTML = '<option value="">— Lager wählen —</option>';
+  const entries = Object.entries(S.ml._w).sort((a, b) => a[1].localeCompare(b[1]));
+  for (const [sub, name] of entries) {
+    const opt = document.createElement('option');
+    opt.value = sub;
+    opt.textContent = name + ' (' + sub + ')';
+    sel.appendChild(opt);
+  }
+}
+
+function showLager() {
+  const sel = document.getElementById('lager-select');
+  const div = document.getElementById('lager-body');
+  const wh  = sel.value;
+  if (!wh || !S.ml?.i) { div.innerHTML = ''; return; }
+
+  const rows = Object.entries(S.ml.i)
+    .filter(([, e]) => e.l?.[wh])
+    .sort((a, b) => a[0].localeCompare(b[0]))
+    .map(([item, e]) => {
+      const loc   = e.l[wh];
+      const cls   = ageClass(item, wh);
+      const price = loc.qoh > 0 && loc.v != null
+        ? (loc.v / loc.qoh).toFixed(2)
+        : '—';
+      return `<tr class="${cls}"><td>${item}</td><td style="font-size:12px">${e.n}</td><td style="text-align:center">${loc.qoh}</td><td style="text-align:center">${loc.min}</td><td style="text-align:right">${price}</td></tr>`;
+    }).join('');
+
+  div.innerHTML = rows
+    ? `<table class="rtable">
+        <thead><tr><th>Nummer</th><th>Bezeichnung</th><th style="text-align:center">QOH</th><th style="text-align:center">MIN</th><th style="text-align:right">Preis/Stk</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>`
+    : '<p style="color:var(--muted);font-size:13px">Keine Artikel für dieses Lager.</p>';
 }
 
 // ── FILE LOAD ────────────────────────────────────────────────────────────────
@@ -919,7 +1000,8 @@ function doSearch() {
     .map(([sub, loc]) => {
       const full  = wmap[sub] || sub;
       const short = full.replace(/\d{4,5}\s+/, '').replace(/\s*CSP\S+.*$/, '').trim();
-      return `<tr>
+      const cls   = ageClass(q, sub);
+      return `<tr class="${cls}">
         <td><strong>${sub}</strong></td>
         <td>${short}</td>
         <td style="text-align:center;font-weight:700">${loc.qoh}</td>
@@ -1128,16 +1210,16 @@ function renderFinish() {
           : `<td style="text-align:center;color:var(--muted)">—</td>`)
       : '';
     const scText = i.sc > 0 ? ` <span style="color:var(--orange);font-size:11px">(${i.sc} gez.)</span>` : '';
-    return `<tr><td>${i.item}${scText}</td><td style="font-size:12px">${i.bez}</td>${defCell}</tr>`;
+    return `<tr class="${ageClass(i.item, S.wh)}"><td>${i.item}${scText}</td><td style="font-size:12px">${i.bez}</td>${defCell}</tr>`;
   }).join('');
 
   const xtraRows = extra.map(([k, v]) => {
     const bez = S.ml?.i?.[k]?.n || '';
-    return `<tr><td>${k}</td><td style="font-size:12px">${bez}</td><td style="text-align:center">${v}</td></tr>`;
+    return `<tr class="${ageClass(k, S.wh)}"><td>${k}</td><td style="font-size:12px">${bez}</td><td style="text-align:center">${v}</td></tr>`;
   }).join('');
 
   const overRows = overItems.map(i =>
-    `<tr><td>${i.item}</td><td style="font-size:12px">${i.bez}</td><td style="text-align:center">${i.qoh}</td><td style="text-align:center;font-weight:700;color:var(--blue)">${i.sc}</td><td style="text-align:center;font-weight:700;color:var(--orange)">${i.excess}</td></tr>`
+    `<tr class="${ageClass(i.item, S.wh)}"><td>${i.item}</td><td style="font-size:12px">${i.bez}</td><td style="text-align:center">${i.qoh}</td><td style="text-align:center;font-weight:700;color:var(--blue)">${i.sc}</td><td style="text-align:center;font-weight:700;color:var(--orange)">${i.excess}</td></tr>`
   ).join('');
 
   // Gezählte Artikel: alle gescannten Positionen (Inventur + Extra), editierbar
@@ -1163,7 +1245,7 @@ function renderFinish() {
           ? `<td style="text-align:center">${i.qoh}</td>`
           : `<td style="text-align:center;color:var(--muted)">—</td>`)
       : '';
-    return `<tr>
+    return `<tr class="${ageClass(i.item, S.wh)}">
       <td>${i.item}</td>
       <td style="font-size:12px">${i.bez}</td>
       ${qohCell}
@@ -1237,7 +1319,7 @@ function renderNormalFinish() {
       bez:  S.ml?.i?.[k]?.n || '',
       sc:   v,
     })),
-  ].map(i => `<tr>
+  ].map(i => `<tr class="${ageClass(i.item, S.wh)}">
     <td>${i.item}</td>
     <td style="font-size:12px">${i.bez}</td>
     <td style="text-align:center"><input type="number" min="0" value="${i.sc}" style="${inpStyle}" onchange="updateScanned('${i.item}',this.value)"></td>

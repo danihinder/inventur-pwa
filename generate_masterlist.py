@@ -13,9 +13,11 @@ Wöchentlich ausführen wenn eine neue Masterlist-XLSX eintrifft.
 """
 
 import sys
+import os
 import json
 import argparse
 import subprocess
+import datetime
 from pathlib import Path
 from collections import defaultdict
 
@@ -36,12 +38,45 @@ DEFAULT_OUT   = Path(__file__).parent / "data" / "masterlist.json"
 # ---------------------------------------------------------------------------
 # Spaltenindizes (0-basiert, aus der XLSX-Struktur)
 # ---------------------------------------------------------------------------
-COL_SUB   = 3   # SUB INVENTORY       z.B. "CHU.8678"
+COL_SUB   = 3   # SUB INVENTORY           z.B. "CHU.8678"
 COL_ENG   = 4   # ENGINEER/LOCATION NAME  z.B. "8678 Edubook CSP341555xxx"
-COL_ITEM  = 7   # ITEM NUMBER         z.B. "0001070128700"
-COL_NAME  = 8   # ITEM NAME           z.B. "BELT-TIMING-1830-2MR09"
+COL_ITEM  = 7   # ITEM NUMBER             z.B. "0001070128700"
+COL_NAME  = 8   # ITEM NAME               z.B. "BELT-TIMING-1830-2MR09"
 COL_MIN   = 17  # MIN QTY
 COL_QOH   = 19  # TOTAL ON HAND QTY
+COL_VAL   = 21  # TOTAL STOCK VALUE
+COL_AGE   = 23  # AGE RANK                z.B. "< 30 DAYS", "Excluded"
+
+
+def parse_age_rank(raw) -> int:
+    """
+    Konvertiert AGE RANK String zu int:
+      -1 = Excluded / unbekannt
+       0 = < 30 days
+       1 = 30 - 60 days
+       2 = 61 - 90 days
+       3 = 91 - 180 days
+       4 = 181 - 360 days
+       5 = > 360 days
+    """
+    if raw is None:
+        return -1
+    s = str(raw).strip().upper()
+    if not s or 'EXCLUDED' in s:
+        return -1
+    if '< 30' in s or s.startswith('<30'):
+        return 0
+    if '30' in s and '60' in s:
+        return 1
+    if '61' in s and '90' in s:
+        return 2
+    if '91' in s and '180' in s:
+        return 3
+    if '181' in s and '360' in s:
+        return 4
+    if '> 360' in s or '>360' in s:
+        return 5
+    return -1
 
 
 def clean_location_name(raw: str) -> str:
@@ -81,9 +116,20 @@ def main():
     wb = openpyxl.load_workbook(str(input_path), read_only=True, data_only=True)
     ws = wb.active
 
+    # _stand: Datum der letzten Änderung der Quelldatei
+    mtime = os.path.getmtime(str(input_path))
+    stand_date = datetime.datetime.fromtimestamp(mtime).date().isoformat()
+    print(f"  Stand (Quelldatei): {stand_date}")
+
     # Spaltenstruktur validieren
     header = list(next(ws.iter_rows(values_only=True)))
-    expected = {COL_SUB: 'SUB INVENTORY', COL_ITEM: 'ITEM NUMBER', COL_MIN: 'MIN QTY'}
+    expected = {
+        COL_SUB:  'SUB INVENTORY',
+        COL_ITEM: 'ITEM NUMBER',
+        COL_MIN:  'MIN QTY',
+        COL_VAL:  'TOTAL STOCK VALUE',
+        COL_AGE:  'AGE RANK',
+    }
     for col, name in expected.items():
         actual = str(header[col]).strip() if col < len(header) else '?'
         if actual != name:
@@ -110,12 +156,16 @@ def main():
         if not item or item == 'None':
             continue
 
-        name = str(row[COL_NAME]).strip() if row[COL_NAME] else ''
-        eng  = str(row[COL_ENG]).strip()  if row[COL_ENG]  else ''
-        mn   = int(row[COL_MIN]) if isinstance(row[COL_MIN], (int, float)) else 0
-        qoh  = int(row[COL_QOH]) if isinstance(row[COL_QOH], (int, float)) else 0
+        name    = str(row[COL_NAME]).strip() if row[COL_NAME] else ''
+        eng     = str(row[COL_ENG]).strip()  if row[COL_ENG]  else ''
+        mn      = int(row[COL_MIN]) if isinstance(row[COL_MIN], (int, float)) else 0
+        qoh     = int(row[COL_QOH]) if isinstance(row[COL_QOH], (int, float)) else 0
+        val_raw = row[COL_VAL] if len(row) > COL_VAL else None
+        age_raw = row[COL_AGE] if len(row) > COL_AGE else None
+        val     = round(float(val_raw), 2) if isinstance(val_raw, (int, float)) else 0.0
+        age     = parse_age_rank(age_raw)
 
-        item_map[item][sub] = {'min': mn, 'qoh': qoh}
+        item_map[item][sub] = {'min': mn, 'qoh': qoh, 'a': age, 'v': val}
 
         if item not in item_names:
             item_names[item] = name
@@ -131,7 +181,8 @@ def main():
     # JSON aufbauen
     # Kompaktes Format: _w = warehouses dict, i = items dict
     data = {
-        '_generated': __import__('datetime').date.today().isoformat(),
+        '_generated': datetime.date.today().isoformat(),
+        '_stand':     stand_date,  # Datum der Quelldatei (mtime)
         '_w': eng_names,   # { "CHU.8678": "Edubook", ... }
         'i': {
             item: {
