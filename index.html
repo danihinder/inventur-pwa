@@ -42,14 +42,13 @@
     header {
       background: var(--blue);
       color: #fff;
-      padding: 14px 16px 12px;
+      padding: 9px 16px;
       text-align: center;
       position: sticky;
       top: 0;
       z-index: 60;
     }
     header h1 { font-size: 17px; font-weight: 700; }
-    header p  { font-size: 12px; opacity: .75; margin-top: 2px; }
 
     /* ── PAGES ── */
     .page { display: none; padding: 14px 14px 30px; }
@@ -271,8 +270,7 @@
 <body>
 
 <header>
-  <h1>📦 Inventory Scanner <span id="build-lbl" style="font-size:11px;font-weight:400;opacity:.55;cursor:default" onclick="onBuildTap()">Build 44</span></h1>
-  <p id="hdr-sub">No inventory file loaded</p>
+  <h1>📦 Inventory Scanner <span id="build-lbl" style="font-size:11px;font-weight:400;opacity:.55;cursor:default" onclick="onBuildTap()">Build 45</span></h1>
 </header>
 
 <!-- ═══════════════════ PAGE: INVENTUR ═══════════════════ -->
@@ -293,6 +291,9 @@
 
   <!-- SCAN CARD (shown when file loaded) -->
   <div class="hidden" id="scan-card">
+    <p id="inv-info" style="font-size:13px;font-weight:600;color:var(--muted);margin-bottom:12px">
+      Loaded inventory: <span id="inv-info-text" style="color:#1a202c">—</span>
+    </p>
     <div class="card" style="padding:14px">
       <div class="pbar"><div class="pfill" id="pfill-stk" style="width:0%"></div></div>
       <div class="ptext" id="ptext-stk">—</div>
@@ -807,10 +808,8 @@ function updateUI() {
     ? (totalQoh ? `${scannedQoh} of ${totalQoh} units in stock` : '—')
     : '';
 
-  const sub = document.getElementById('hdr-sub');
-  sub.textContent = S.wh
-    ? `${S.wh}  ·  ${S.whName || ''}`
-    : 'No inventory file loaded';
+  const infoEl = document.getElementById('inv-info-text');
+  if (infoEl) infoEl.textContent = S.wh ? `${S.wh}  ·  ${S.whName || ''}` : '—';
 
   const subject = S.fname ? S.fname.replace(/\.xlsx?$/i, '') : '—';
   const subEl = document.getElementById('share-subject-normal');
@@ -1439,7 +1438,6 @@ function resetSession() {
   document.getElementById('load-card').classList.remove('hidden');
   document.getElementById('scan-card').classList.add('hidden');
   document.getElementById('merge-link').style.display = 'none';
-  document.getElementById('hdr-sub').textContent = 'No inventory file loaded';
   showPage('inv');
 }
 
