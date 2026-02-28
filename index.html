@@ -251,11 +251,7 @@
     .btn-sound.off    { background: #fff; color: var(--muted); border: 2px solid var(--border); }
 
     /* ── NORMAL / EXPERT MODE LAYOUT ── */
-    body:not(.expert-mode) .stats { display: none !important; }
-    #normal-finish-section { display: none; }
-    body:not(.expert-mode) #normal-finish-section { display: block; }
-    #expert-finish-section { display: none; }
-    body.expert-mode #expert-finish-section { display: block; }
+    /* beide Modi nutzen dasselbe Layout auf der Hauptseite */
 
     /* ── AGE RANK COLORS ── */
     .age-x, .age-0 { color: #1a202c; }
@@ -271,7 +267,7 @@
 <body>
 
 <header>
-  <h1>📦 Inventur Scanner <span id="build-lbl" style="font-size:11px;font-weight:400;opacity:.55;cursor:default" onclick="onBuildTap()">Build 40</span></h1>
+  <h1>📦 Inventur Scanner <span id="build-lbl" style="font-size:11px;font-weight:400;opacity:.55;cursor:default" onclick="onBuildTap()">Build 41</span></h1>
   <p id="hdr-sub">Keine Inventurdatei geladen</p>
 </header>
 
@@ -293,11 +289,6 @@
 
   <!-- SCAN CARD (shown when file loaded) -->
   <div class="hidden" id="scan-card">
-    <div class="stats">
-      <div class="stat ok">   <div class="n" id="cnt-ok-stk">0</div>   <div class="lbl">Gezählt</div>  </div>
-      <div class="stat miss"> <div class="n" id="cnt-miss-stk">0</div> <div class="lbl">Fehlend</div>  </div>
-      <div class="stat xtra"> <div class="n" id="cnt-xtra-stk">0</div> <div class="lbl">Extra</div>    </div>
-    </div>
     <div class="card" style="padding:14px">
       <div class="pbar"><div class="pfill" id="pfill-stk" style="width:0%"></div></div>
       <div class="ptext" id="ptext-stk">—</div>
@@ -316,8 +307,9 @@
       </div>
     </div>
 
-    <!-- NORMAL MODE: gezählte Artikel + Aktionen -->
+    <!-- Gezählte Artikel + Aktionen -->
     <div id="normal-finish-section">
+      <span onclick="openAgeModal()" style="display:block;text-align:right;font-size:12px;color:var(--blue);cursor:pointer;-webkit-tap-highlight-color:transparent;margin-bottom:2px">ℹ️ Farblegende</span>
       <div id="normal-finish-body"></div>
       <button class="btn btn-success" style="margin-top:4px" onclick="shareXLSX()">
         ⬇️ Ausgefüllte XLSX herunterladen
@@ -332,41 +324,27 @@
       </button>
     </div>
 
-    <!-- EXPERT MODE: Abschluss inline -->
-    <div id="expert-finish-section">
-      <div class="card" style="margin-top:0">
-        <h2>✅ Inventur abschliessen</h2>
-        <div id="finish-body" style="margin-top:8px"></div>
-        <button class="btn btn-success" style="margin-top:16px" onclick="shareXLSX()">
-          ⬇️ Ausgefüllte XLSX herunterladen
-        </button>
-        <div id="share-info-finish" class="hidden" style="background:var(--bg);border-radius:10px;padding:10px 12px;margin-top:8px;font-size:12px;color:var(--muted);line-height:1.8">
-          <div>📧 <strong style="color:#1a202c">An:</strong> servicematerialscontrolling@canon.ch</div>
-          <div>📋 <strong style="color:#1a202c">Betreff:</strong> <span id="share-subject-finish">—</span></div>
-        </div>
-        <hr class="divider">
-        <button class="btn btn-danger btn-sm" onclick="resetSession()">
-          🗑 Neue Inventur starten
-        </button>
-      </div>
-    </div>
   </div>
 
   <!-- Links zu Suche, Merge und Lagerübersicht -->
   <div class="page-links" style="flex-wrap:wrap;gap:14px 24px">
     <span class="page-link" onclick="showPage('suche')">🔍 Ersatzteilsuche →</span>
-    <span class="page-link" onclick="showPage('merge')">🤝 Merge →</span>
+    <span id="merge-link" class="page-link" style="display:none" onclick="showPage('merge')">🤝 Merge →</span>
     <span class="page-link" onclick="showPage('lager')">🏪 Lagerübersicht →</span>
   </div>
+  <p id="merge-warn" class="hidden" style="font-size:11px;color:var(--orange);text-align:center;margin:0 0 8px">⚠️ Falls Merge geplant: jetzt zusammenführen, dann weiter scannen</p>
 </div>
 
 <!-- ═══════════════════ PAGE: TEILSUCHE ═══════════════════ -->
 <div class="page hidden" id="page-suche">
   <span class="back-link" onclick="showPage('inv')">← zurück zur Inventur</span>
   <div class="card">
-    <h2>🔍 Teilsuche <span onclick="openAgeModal()" style="font-size:15px;font-weight:400;cursor:pointer;-webkit-tap-highlight-color:transparent" title="Farblegende">ℹ️</span></h2>
+    <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px">
+      <h2 style="margin-bottom:0">🔍 Teilsuche</h2>
+      <span onclick="openAgeModal()" style="font-size:12px;color:var(--blue);cursor:pointer;-webkit-tap-highlight-color:transparent">ℹ️ Farblegende</span>
+    </div>
     <p style="font-size:13px;color:var(--muted);margin-bottom:12px">
-      Wo liegt welche Menge? QOH = Bestand laut System · MIN = Soll
+      Wo liegt welche Menge? QOH = Bestand laut System · MIN = Nachschubmenge
     </p>
     <div class="search-row">
       <input type="text" id="srch-inp" placeholder="Teilenummer …" inputmode="numeric"
@@ -411,7 +389,10 @@
 <div class="page hidden" id="page-lager">
   <span class="back-link" onclick="showPage('inv')">← zurück zur Inventur</span>
   <div class="card">
-    <h2>🏪 Lagerübersicht <span onclick="openAgeModal()" style="font-size:15px;font-weight:400;cursor:pointer;-webkit-tap-highlight-color:transparent" title="Farblegende">ℹ️</span></h2>
+    <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px">
+      <h2 style="margin-bottom:0">🏪 Lagerübersicht</h2>
+      <span onclick="openAgeModal()" style="font-size:12px;color:var(--blue);cursor:pointer;-webkit-tap-highlight-color:transparent">ℹ️ Farblegende</span>
+    </div>
     <div style="margin-bottom:14px">
       <select id="lager-select" style="width:100%;padding:10px 12px;border:2px solid var(--border);border-radius:12px;font-size:15px;background:#fff;color:#1a202c" onchange="showLager()">
         <option value="">— Lager wählen —</option>
@@ -427,8 +408,7 @@
 ══════════════════════════════════════════ -->
 <div class="modal-bg" id="age-modal" onclick="if(event.target===this)closeAgeModal()">
   <div class="modal">
-    <div class="modal-title" style="margin-bottom:4px">Farben nach Lagerdauer</div>
-    <div class="modal-sub">AGE RANK aus der Masterlist</div>
+    <div class="modal-title" style="margin-bottom:16px">Farben nach Lagerdauer</div>
     <div style="display:flex;flex-direction:column;gap:12px;margin:18px 0;font-size:15px;font-weight:600">
       <div class="age-0">⬤&ensp;&lt; 30 Tage</div>
       <div class="age-1">⬤&ensp;30–60 Tage</div>
@@ -584,7 +564,6 @@ function onBuildTap() {
       localStorage.removeItem('inventur_expert');
       _updateBuildLabel();
       applyMode();
-      renderFinish();
     } else {
       const pin = prompt('PIN:');
       if (pin === '675756') {
@@ -592,7 +571,6 @@ function onBuildTap() {
         localStorage.setItem('inventur_expert', '1');
         _updateBuildLabel();
         applyMode();
-        renderFinish();
       }
     }
   }
@@ -607,11 +585,10 @@ function _updateBuildLabel() {
 function applyMode() {
   if (expertMode) {
     document.body.classList.add('expert-mode');
-    renderFinish();
   } else {
     document.body.classList.remove('expert-mode');
-    renderNormalFinish();
   }
+  renderNormalFinish();
 }
 
 function ageClass(item, wh) {
@@ -791,31 +768,22 @@ async function _loadXlsx(buf, filename, msg) {
 function showScanCard() {
   document.getElementById('load-card').classList.add('hidden');
   document.getElementById('scan-card').classList.remove('hidden');
+  document.getElementById('merge-link').style.display = '';
 }
 
 // ── UI UPDATE ────────────────────────────────────────────────────────────────
 function updateUI() {
   if (!S.inv) return;
   const total = S.inv.length;
-  let ok = 0, totalQoh = 0, scannedQoh = 0, totalDeficit = 0;
+  let totalQoh = 0, scannedQoh = 0;
   for (const i of S.inv) {
-    const sc     = S.scanned[i.item] || 0;
-    const qoh    = S.ml?.i?.[i.item]?.l?.[S.wh]?.qoh ?? null;
-    const target = qoh !== null ? qoh : 1;
-    const deficit = Math.max(0, target - sc);
-    if (deficit === 0) ok++;
-    else totalDeficit += deficit;
+    const sc  = S.scanned[i.item] || 0;
+    const qoh = S.ml?.i?.[i.item]?.l?.[S.wh]?.qoh ?? null;
     if (qoh !== null) {
       totalQoh   += qoh;
       scannedQoh += Math.min(sc, qoh);
     }
   }
-  const extraItems = Object.keys(S.scanned).filter(k => !S.inv.find(i => i.item === k));
-  const extraStk   = extraItems.reduce((s, k) => s + (S.scanned[k] || 0), 0);
-
-  document.getElementById('cnt-ok-stk').textContent   = Object.values(S.scanned).reduce((s,v)=>s+v,0);
-  document.getElementById('cnt-miss-stk').textContent = totalDeficit;
-  document.getElementById('cnt-xtra-stk').textContent = extraStk;
 
   document.getElementById('pfill-stk').style.width = totalQoh ? (scannedQoh / totalQoh * 100) + '%' : '0%';
   document.getElementById('ptext-stk').textContent = expertMode
@@ -828,15 +796,15 @@ function updateUI() {
     : 'Keine Inventurdatei geladen';
 
   const subject = S.fname ? S.fname.replace(/\.xlsx?$/i, '') : '—';
-  ['share-subject-normal', 'share-subject-finish'].forEach(id => {
-    const el = document.getElementById(id); if (el) el.textContent = subject;
-  });
-  ['share-info-normal', 'share-info-finish'].forEach(id => {
-    const el = document.getElementById(id); if (el) el.classList.toggle('hidden', !S.fname);
-  });
+  const subEl = document.getElementById('share-subject-normal');
+  if (subEl) subEl.textContent = subject;
+  const siEl = document.getElementById('share-info-normal');
+  if (siEl) siEl.classList.toggle('hidden', !S.fname);
 
-  if (!expertMode) renderNormalFinish();
-  else renderFinish();
+  document.getElementById('merge-warn')?.classList.toggle('hidden',
+    JSON.stringify(S.scanned).length < 4000);
+
+  renderNormalFinish();
 }
 
 // ── SOUND + HAPTIC ────────────────────────────────────────────────────────────
@@ -1363,7 +1331,6 @@ function updateScanned(item, val) {
   else S.scanned[item] = n;
   saveSession();
   updateUI();
-  if (expertMode) renderFinish();
 }
 
 // ── XLSX AUFBEREITEN (gemeinsam für Download + Share) ─────────────────────────
@@ -1451,6 +1418,7 @@ function resetSession() {
   localStorage.removeItem(SESSION_KEY);
   document.getElementById('load-card').classList.remove('hidden');
   document.getElementById('scan-card').classList.add('hidden');
+  document.getElementById('merge-link').style.display = 'none';
   document.getElementById('hdr-sub').textContent = 'Keine Inventurdatei geladen';
   showPage('inv');
 }
