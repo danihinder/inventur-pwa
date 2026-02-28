@@ -271,7 +271,7 @@
 <body>
 
 <header>
-  <h1>📦 Inventur Scanner <span id="build-lbl" style="font-size:11px;font-weight:400;opacity:.55;cursor:default" onclick="onBuildTap()">Build 39</span></h1>
+  <h1>📦 Inventur Scanner <span id="build-lbl" style="font-size:11px;font-weight:400;opacity:.55;cursor:default" onclick="onBuildTap()">Build 40</span></h1>
   <p id="hdr-sub">Keine Inventurdatei geladen</p>
 </header>
 
@@ -365,10 +365,9 @@
   <span class="back-link" onclick="showPage('inv')">← zurück zur Inventur</span>
   <div class="card">
     <h2>🔍 Teilsuche <span onclick="openAgeModal()" style="font-size:15px;font-weight:400;cursor:pointer;-webkit-tap-highlight-color:transparent" title="Farblegende">ℹ️</span></h2>
-    <p style="font-size:13px;color:var(--muted);margin-bottom:6px">
+    <p style="font-size:13px;color:var(--muted);margin-bottom:12px">
       Wo liegt welche Menge? QOH = Bestand laut System · MIN = Soll
     </p>
-    <p id="suche-stand" style="display:none;font-size:11px;color:var(--muted);margin-bottom:12px"></p>
     <div class="search-row">
       <input type="text" id="srch-inp" placeholder="Teilenummer …" inputmode="numeric"
              onkeyup="if(event.key==='Enter')doSearch()">
@@ -413,7 +412,6 @@
   <span class="back-link" onclick="showPage('inv')">← zurück zur Inventur</span>
   <div class="card">
     <h2>🏪 Lagerübersicht <span onclick="openAgeModal()" style="font-size:15px;font-weight:400;cursor:pointer;-webkit-tap-highlight-color:transparent" title="Farblegende">ℹ️</span></h2>
-    <p id="lager-stand" style="display:none;font-size:11px;color:var(--muted);margin-bottom:12px"></p>
     <div style="margin-bottom:14px">
       <select id="lager-select" style="width:100%;padding:10px 12px;border:2px solid var(--border);border-radius:12px;font-size:15px;background:#fff;color:#1a202c" onchange="showLager()">
         <option value="">— Lager wählen —</option>
@@ -440,6 +438,7 @@
       <div class="age-5">⬤&ensp;&gt; 360 Tage</div>
       <div class="age-x">⬤&ensp;Excluded</div>
     </div>
+    <p id="modal-stand" style="display:none;font-size:12px;color:var(--muted);margin-bottom:16px"></p>
     <button class="btn btn-outline" onclick="closeAgeModal()">Schliessen</button>
   </div>
 </div>
@@ -684,10 +683,8 @@ function initLager() {
   if (!S.ml) return;
   const stand = S.ml._stand || '';
   if (stand) {
-    ['suche-stand', 'lager-stand'].forEach(id => {
-      const el = document.getElementById(id);
-      if (el) { el.textContent = 'Stand: ' + stand; el.style.display = ''; }
-    });
+    const el = document.getElementById('modal-stand');
+    if (el) { el.textContent = 'Stand der Daten: ' + stand; el.style.display = ''; }
   }
   const sel = document.getElementById('lager-select');
   if (!sel || !S.ml._w) return;
