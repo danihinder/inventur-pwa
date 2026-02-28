@@ -268,7 +268,7 @@
 <body>
 
 <header>
-  <h1>📦 Inventur Scanner <span id="build-lbl" style="font-size:11px;font-weight:400;opacity:.55;cursor:default" onclick="onBuildTap()">Build 32</span></h1>
+  <h1>📦 Inventur Scanner <span id="build-lbl" style="font-size:11px;font-weight:400;opacity:.55;cursor:default" onclick="onBuildTap()">Build 33</span></h1>
   <p id="hdr-sub">Keine Inventurdatei geladen</p>
 </header>
 
@@ -1343,11 +1343,14 @@ async function shareXLSX() {
     const file = new File([data], outName, {
       type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
     });
-    if (navigator.canShare?.({ files: [file] })) {
-      await navigator.share({ files: [file] });
+    if (navigator.share) {
+      try {
+        await navigator.share({ files: [file] });
+      } catch (e) {
+        if (e.name !== 'AbortError') XLSX.writeFile(wb, outName);
+      }
     } else {
       XLSX.writeFile(wb, outName);
-      alert('Teilen nicht unterstützt – Datei wurde heruntergeladen.');
     }
   } catch (e) {
     if (e.name !== 'AbortError') alert('Fehler: ' + e.message);
