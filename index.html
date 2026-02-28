@@ -268,7 +268,7 @@
 <body>
 
 <header>
-  <h1>📦 Inventur Scanner <span id="build-lbl" style="font-size:11px;font-weight:400;opacity:.55;cursor:default" onclick="onBuildTap()">Build 35</span></h1>
+  <h1>📦 Inventur Scanner <span id="build-lbl" style="font-size:11px;font-weight:400;opacity:.55;cursor:default" onclick="onBuildTap()">Build 36</span></h1>
   <p id="hdr-sub">Keine Inventurdatei geladen</p>
 </header>
 
@@ -316,11 +316,8 @@
     <!-- NORMAL MODE: gezählte Artikel + Aktionen (kein Tab-Wechsel nötig) -->
     <div id="normal-finish-section">
       <div id="normal-finish-body"></div>
-      <button class="btn btn-success" style="margin-top:4px" onclick="downloadXLSX()">
+      <button class="btn btn-success" style="margin-top:4px" onclick="shareXLSX()">
         ⬇️ Ausgefüllte XLSX herunterladen
-      </button>
-      <button class="btn btn-outline" style="margin-top:10px" onclick="shareXLSX()">
-        📤 Ausgefüllte XLSX zurücksenden
       </button>
       <div id="share-info-normal" class="hidden" style="background:var(--bg);border-radius:10px;padding:10px 12px;margin-top:8px;font-size:12px;color:var(--muted);line-height:1.8">
         <div>📧 <strong style="color:#1a202c">An:</strong> servicematerialscontrolling@canon.ch</div>
@@ -383,11 +380,8 @@
   <div class="card">
     <h2>✅ Inventur abschliessen</h2>
     <div id="finish-body" style="margin-top:8px"></div>
-    <button class="btn btn-success" style="margin-top:16px" onclick="downloadXLSX()">
+    <button class="btn btn-success" style="margin-top:16px" onclick="shareXLSX()">
       ⬇️ Ausgefüllte XLSX herunterladen
-    </button>
-    <button class="btn btn-outline" style="margin-top:10px" onclick="shareXLSX()">
-      📤 Ausgefüllte XLSX zurücksenden
     </button>
     <div id="share-info-finish" class="hidden" style="background:var(--bg);border-radius:10px;padding:10px 12px;margin-top:8px;font-size:12px;color:var(--muted);line-height:1.8">
       <div>📧 <strong style="color:#1a202c">An:</strong> servicematerialscontrolling@canon.ch</div>
