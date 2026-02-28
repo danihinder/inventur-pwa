@@ -268,7 +268,7 @@
 <body>
 
 <header>
-  <h1>📦 Inventur Scanner <span id="build-lbl" style="font-size:11px;font-weight:400;opacity:.55;cursor:default" onclick="onBuildTap()">Build 34</span></h1>
+  <h1>📦 Inventur Scanner <span id="build-lbl" style="font-size:11px;font-weight:400;opacity:.55;cursor:default" onclick="onBuildTap()">Build 35</span></h1>
   <p id="hdr-sub">Keine Inventurdatei geladen</p>
 </header>
 
@@ -285,9 +285,6 @@
       📂 XLSX aus E-Mail öffnen
     </button>
     <input type="file" id="file-inp" accept=".xlsx,.xls" class="hidden" onchange="onFileLoad(this)">
-    <button class="btn btn-outline" style="margin-top:10px" onclick="pasteFromClipboard()">
-      📋 XLSX aus Zwischenablage einfügen
-    </button>
     <p id="load-msg" style="font-size:13px;color:var(--muted);margin-top:10px"></p>
   </div>
 
@@ -324,9 +321,6 @@
       </button>
       <button class="btn btn-outline" style="margin-top:10px" onclick="shareXLSX()">
         📤 Ausgefüllte XLSX zurücksenden
-      </button>
-      <button class="btn btn-outline" style="margin-top:10px" onclick="mailtoXLSX()">
-        📋 Kopieren &amp; E-Mail öffnen
       </button>
       <div id="share-info-normal" class="hidden" style="background:var(--bg);border-radius:10px;padding:10px 12px;margin-top:8px;font-size:12px;color:var(--muted);line-height:1.8">
         <div>📧 <strong style="color:#1a202c">An:</strong> servicematerialscontrolling@canon.ch</div>
@@ -394,9 +388,6 @@
     </button>
     <button class="btn btn-outline" style="margin-top:10px" onclick="shareXLSX()">
       📤 Ausgefüllte XLSX zurücksenden
-    </button>
-    <button class="btn btn-outline" style="margin-top:10px" onclick="mailtoXLSX()">
-      📋 Kopieren &amp; E-Mail öffnen
     </button>
     <div id="share-info-finish" class="hidden" style="background:var(--bg);border-radius:10px;padding:10px 12px;margin-top:8px;font-size:12px;color:var(--muted);line-height:1.8">
       <div>📧 <strong style="color:#1a202c">An:</strong> servicematerialscontrolling@canon.ch</div>
@@ -655,32 +646,6 @@ function showPage(name, btn) {
 }
 
 // ── FILE LOAD ────────────────────────────────────────────────────────────────
-async function pasteFromClipboard() {
-  const msg = document.getElementById('load-msg');
-  msg.textContent = '';
-  if (!navigator.clipboard?.read) {
-    msg.textContent = 'Zwischenablage-Zugriff nicht unterstützt in diesem Browser.';
-    return;
-  }
-  try {
-    msg.textContent = 'Lese Zwischenablage …';
-    const items = await navigator.clipboard.read();
-    for (const item of items) {
-      const mime = item.types.find(t =>
-        t.includes('spreadsheetml') || t.includes('excel') || t === 'application/octet-stream'
-      );
-      if (mime) {
-        const blob = await item.getType(mime);
-        await _loadXlsx(await blob.arrayBuffer(), 'Inventur_Clipboard.xlsx', msg);
-        return;
-      }
-    }
-    msg.textContent = 'Kein XLSX in der Zwischenablage gefunden.';
-  } catch (e) {
-    msg.textContent = 'Fehler: ' + e.message;
-  }
-}
-
 async function onFileLoad(input) {
   const file = input.files[0];
   if (!file) return;
@@ -1366,22 +1331,6 @@ async function downloadXLSX() {
   try {
     const { wb, outName } = await _buildFilledXlsx();
     XLSX.writeFile(wb, outName);
-  } catch (e) { alert('Fehler: ' + e.message); }
-}
-
-// ── MAILTO XLSX ───────────────────────────────────────────────────────────────
-async function mailtoXLSX() {
-  try {
-    const { wb, outName } = await _buildFilledXlsx();
-    const data = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
-    const blob = new Blob([data], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-    try {
-      await navigator.clipboard.write([
-        new ClipboardItem({ 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': blob })
-      ]);
-    } catch (e) { console.warn('Clipboard write failed:', e); }
-    const subject = encodeURIComponent((S.fname || 'Inventur').replace(/\.xlsx?$/i, ''));
-    window.location.href = `mailto:servicematerialscontrolling@canon.ch?subject=${subject}`;
   } catch (e) { alert('Fehler: ' + e.message); }
 }
 
