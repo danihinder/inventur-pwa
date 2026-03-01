@@ -595,6 +595,7 @@ function onBuildTap() {
       localStorage.removeItem('inventur_expert');
       _updateBuildLabel();
       applyMode();
+      track('expert_off');
     } else {
       const pin = prompt('PIN:');
       if (pin === '675756') {
@@ -602,6 +603,7 @@ function onBuildTap() {
         localStorage.setItem('inventur_expert', '1');
         _updateBuildLabel();
         applyMode();
+        track('expert_on');
       }
     }
   }
