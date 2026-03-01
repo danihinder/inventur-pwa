@@ -356,8 +356,8 @@
              onkeyup="if(event.key==='Enter')doSearch()">
       <button onclick="doSearch()">🔍</button>
     </div>
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
-      <button class="btn btn-outline btn-sm" onclick="startSearchScan()">📷 Scan Barcode</button>
+    <button class="btn btn-outline btn-sm" style="margin-bottom:6px" onclick="startSearchScan()">📷 Scan Barcode</button>
+    <div style="text-align:right;margin-bottom:12px">
       <span onclick="openWhFilter()" style="font-size:12px;color:var(--muted);cursor:pointer">⚙ Filter warehouses</span>
     </div>
     <div id="srch-result"></div>
