@@ -270,7 +270,7 @@
 <body>
 
 <header>
-  <h1>📦 Inventory Scanner <span id="build-lbl" style="font-size:11px;font-weight:400;opacity:.55;cursor:default" onclick="onBuildTap()">Build 47</span></h1>
+  <h1>📦 Inventory Scanner <span id="build-lbl" style="font-size:11px;font-weight:400;opacity:.55;cursor:default" onclick="onBuildTap()">Build 48</span></h1>
 </header>
 
 <!-- ═══════════════════ PAGE: INVENTUR ═══════════════════ -->
@@ -526,6 +526,29 @@
 // ── CONFIG ──────────────────────────────────────────────────────────────────
 const MASTERLIST_URL  = 'data/masterlist.json';
 const SESSION_KEY     = 'inventur_v1';
+const BUILD           = 48;
+
+// ── ANALYTICS ────────────────────────────────────────────────────────────────
+// Set this to your Google Apps Script Web App URL to enable tracking.
+// Leave empty to disable analytics.
+const ANALYTICS_URL = 'https://script.google.com/macros/s/AKfycbwdYjUN7fJ-fPCILlmq-VRXxqEzTNaJr8kA_sCkPVDoe_YEkJothFSjo297fI5eIrei/exec';
+
+function _getUUID() {
+  let id = localStorage.getItem('inventur_uuid');
+  if (!id) {
+    id = crypto.randomUUID?.() || (Math.random().toString(36).slice(2) + Date.now().toString(36));
+    localStorage.setItem('inventur_uuid', id);
+  }
+  return id;
+}
+
+function track(event, extra = {}) {
+  if (!ANALYTICS_URL) return;
+  try {
+    const p = new URLSearchParams({ uuid: _getUUID(), event, build: BUILD, ...extra });
+    fetch(ANALYTICS_URL + '?' + p, { mode: 'no-cors' }).catch(() => {});
+  } catch (_) {}
+}
 
 // ── STATE ────────────────────────────────────────────────────────────────────
 const S = {
@@ -639,6 +662,7 @@ function ageClass(item, wh) {
   updateSoundButtons();
   _updateBuildLabel();
   applyMode();
+  track('app_open');
 
   // ── Web Share Target: eingehende XLSX-Datei verarbeiten ──────────────────
   if (location.search.includes('share-incoming=1')) {
@@ -662,6 +686,7 @@ function showPage(name) {
   const page = document.getElementById('page-' + name);
   page.classList.remove('hidden');
   page.classList.add('active');
+  if (name === 'lager') track('lager_viewed');
 }
 
 function initLager() {
@@ -780,6 +805,7 @@ async function _loadXlsx(buf, filename, msg) {
     showScanCard();
     updateUI();
     if (msg) msg.textContent = '';
+    track('inv_loaded', { wh: S.wh || '', v: S.inv?.length || 0 });
 
   } catch (e) {
     if (msg) msg.textContent = 'Error: ' + e.message;
@@ -997,6 +1023,7 @@ function doSearch() {
     div.innerHTML = `<p style="color:var(--muted)">No entry found for <strong>${q}</strong>.</p>`;
     return;
   }
+  track('search_used');
 
   const wmap = S.ml._w || {};
   const rows = Object.entries(entry.l || {})
@@ -1164,6 +1191,7 @@ async function mergeQRPayload(text) {
     }
     saveSession();
     updateUI();
+    track('merge_done', { v: n });
     alert(`${n} items added from colleague!`);
   } catch (e) {
     alert('QR error: ' + e.message);
@@ -1482,12 +1510,14 @@ async function downloadXLSX() {
   try {
     const { wb, outName } = await _buildFilledXlsx();
     XLSX.writeFile(wb, outName);
+    track('inv_exported', { wh: S.wh || '', v: Object.keys(S.scanned).length });
   } catch (e) { alert('Error: ' + e.message); }
 }
 
 // ── SHARE XLSX ────────────────────────────────────────────────────────────────
 async function shareXLSX() {
   navigator.clipboard?.writeText('servicematerialscontrolling@canon.ch').catch(() => {});
+  track('inv_exported', { wh: S.wh || '', v: Object.keys(S.scanned).length });
   try {
     const { wb, outName } = await _buildFilledXlsx();
     const data = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
