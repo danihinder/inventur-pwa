@@ -270,7 +270,7 @@
 <body>
 
 <header>
-  <h1>📦 Inventory Scanner <span id="build-lbl" style="font-size:11px;font-weight:400;opacity:.55;cursor:default" onclick="onBuildTap()">Build 51</span></h1>
+  <h1>📦 Inventory Scanner <span id="build-lbl" style="font-size:11px;font-weight:400;opacity:.55;cursor:default" onclick="onBuildTap()">Build 53</span></h1>
 </header>
 
 <!-- ═══════════════════ PAGE: INVENTUR ═══════════════════ -->
@@ -546,7 +546,7 @@
 const MASTERLIST_URL  = 'data/masterlist.json';
 const SESSION_KEY     = 'inventur_v1';
 const WH_FILTER_KEY   = 'inventur_wh_filter';
-const BUILD           = 52;
+const BUILD           = 53;
 
 let whFilter = null; // null = all visible; Set<sub> = filtered
 
@@ -668,6 +668,14 @@ function ageClass(item, wh) {
     const raw = localStorage.getItem(WH_FILTER_KEY);
     if (raw) whFilter = new Set(JSON.parse(raw));
   } catch(e) {}
+  // Auto-add new warehouses that aren't in the saved filter yet
+  if (whFilter !== null && S.ml?._w) {
+    let changed = false;
+    for (const sub of Object.keys(S.ml._w)) {
+      if (!whFilter.has(sub)) { whFilter.add(sub); changed = true; }
+    }
+    if (changed) localStorage.setItem(WH_FILTER_KEY, JSON.stringify([...whFilter]));
+  }
   initLager();
 
   // Restore session
