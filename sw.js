@@ -1,7 +1,7 @@
 // ── Inventur Scanner – Service Worker ────────────────────────────────────────
 // WICHTIG: CACHE_NAME hochzählen (v2, v3, …) bei jedem Deployment.
 // Das löst die Update-Erkennung im Browser aus.
-const CACHE_NAME = 'inventur-v50';
+const CACHE_NAME = 'inventur-v51';
 
 // App-Shell (müssen alle erfolgreich geladen werden)
 const CORE_URLS = [
@@ -67,6 +67,9 @@ self.addEventListener('fetch', event => {
 // ── FETCH: Cache-Strategie ───────────────────────────────────────────────────
 self.addEventListener('fetch', event => {
   const url = new URL(event.request.url);
+
+  // Analytics: nativ durchlassen, nicht cachen
+  if (url.hostname === 'script.google.com' || url.hostname === 'script.googleusercontent.com') return;
 
   // masterlist.json: Network-first → immer aktuellste Daten
   if (url.pathname.endsWith('masterlist.json')) {
