@@ -356,9 +356,10 @@
              onkeyup="if(event.key==='Enter')doSearch()">
       <button onclick="doSearch()">🔍</button>
     </div>
-    <button class="btn btn-outline btn-sm" style="margin-bottom:14px" onclick="startSearchScan()">
-      📷 Scan Barcode
-    </button>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+      <button class="btn btn-outline btn-sm" onclick="startSearchScan()">📷 Scan Barcode</button>
+      <span onclick="openWhFilter()" style="font-size:12px;color:var(--muted);cursor:pointer">⚙ Filter warehouses</span>
+    </div>
     <div id="srch-result"></div>
   </div>
 </div>
@@ -401,10 +402,13 @@
       <h2 style="margin-bottom:0">🏪 Warehouse Overview</h2>
       <span onclick="openAgeModal()" style="font-size:14px;cursor:pointer;-webkit-tap-highlight-color:transparent">ℹ️</span>
     </div>
-    <div style="margin-bottom:14px">
+    <div style="margin-bottom:6px">
       <select id="lager-select" style="width:100%;padding:10px 12px;border:2px solid var(--border);border-radius:12px;font-size:15px;background:#fff;color:#1a202c" onchange="showLager()">
         <option value="">— Select Warehouse —</option>
       </select>
+    </div>
+    <div style="text-align:right;margin-bottom:12px">
+      <span onclick="openWhFilter()" style="font-size:12px;color:var(--muted);cursor:pointer">⚙ Filter warehouses</span>
     </div>
     <div id="lager-body"></div>
   </div>
@@ -428,6 +432,21 @@
     </div>
     <p id="modal-stand" style="display:none;font-size:12px;color:var(--muted);margin-bottom:16px"></p>
     <button class="btn btn-outline" onclick="closeAgeModal()">Close</button>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     WAREHOUSE FILTER MODAL
+══════════════════════════════════════════ -->
+<div class="modal-bg" id="wh-filter-modal" onclick="if(event.target===this)closeWhFilter()">
+  <div class="modal">
+    <div class="modal-title" style="margin-bottom:12px">Warehouse Filter</div>
+    <div style="display:flex;gap:8px;margin-bottom:12px">
+      <button class="btn btn-outline btn-sm" onclick="whFilterAll()">Select All</button>
+      <button class="btn btn-outline btn-sm" onclick="whFilterNone()">Deselect All</button>
+    </div>
+    <div id="wh-filter-list" style="max-height:55vh;overflow-y:auto;margin-bottom:16px"></div>
+    <button class="btn btn-primary" onclick="closeWhFilter()">Done</button>
   </div>
 </div>
 
@@ -526,7 +545,10 @@
 // ── CONFIG ──────────────────────────────────────────────────────────────────
 const MASTERLIST_URL  = 'data/masterlist.json';
 const SESSION_KEY     = 'inventur_v1';
-const BUILD           = 51;
+const WH_FILTER_KEY   = 'inventur_wh_filter';
+const BUILD           = 52;
+
+let whFilter = null; // null = all visible; Set<sub> = filtered
 
 // ── ANALYTICS ────────────────────────────────────────────────────────────────
 // Set this to your Google Apps Script Web App URL to enable tracking.
@@ -615,6 +637,10 @@ function _updateBuildLabel() {
   el.style.color   = expertMode ? '#f59e0b' : '';
 }
 
+function isWhVisible(sub) {
+  return whFilter === null || whFilter.has(sub);
+}
+
 function applyMode() {
   if (expertMode) {
     document.body.classList.add('expert-mode');
@@ -638,6 +664,10 @@ function ageClass(item, wh) {
     const r = await fetch(MASTERLIST_URL);
     if (r.ok) S.ml = await r.json();
   } catch (e) { console.warn('masterlist not loaded:', e); }
+  try {
+    const raw = localStorage.getItem(WH_FILTER_KEY);
+    if (raw) whFilter = new Set(JSON.parse(raw));
+  } catch(e) {}
   initLager();
 
   // Restore session
@@ -701,7 +731,7 @@ function initLager() {
   const sel = document.getElementById('lager-select');
   if (!sel || !S.ml._w) return;
   sel.innerHTML = '<option value="">— Select Warehouse —</option>';
-  const entries = Object.entries(S.ml._w).sort((a, b) => a[1].localeCompare(b[1]));
+  const entries = Object.entries(S.ml._w).filter(([sub]) => isWhVisible(sub)).sort((a, b) => a[1].localeCompare(b[1]));
   for (const [sub, name] of entries) {
     const opt = document.createElement('option');
     opt.value = sub;
@@ -1029,6 +1059,7 @@ function doSearch() {
 
   const wmap = S.ml._w || {};
   const rows = Object.entries(entry.l || {})
+    .filter(([sub]) => isWhVisible(sub))
     .sort((a, b) => a[0].localeCompare(b[0]))
     .map(([sub, loc]) => {
       const full  = wmap[sub] || sub;
@@ -1216,6 +1247,46 @@ function clearMergeQR() {
 // ── AGE LEGEND ────────────────────────────────────────────────────────────────
 function openAgeModal()  { document.getElementById('age-modal').classList.add('open'); }
 function closeAgeModal() { document.getElementById('age-modal').classList.remove('open'); }
+
+// ── WAREHOUSE FILTER ──────────────────────────────────────────────────────────
+function openWhFilter() {
+  if (!S.ml?._w) return;
+  const entries = Object.entries(S.ml._w).sort((a, b) => a[1].localeCompare(b[1]));
+  document.getElementById('wh-filter-list').innerHTML = entries.map(([sub, name]) => {
+    const checked = isWhVisible(sub) ? 'checked' : '';
+    const short = name.replace(/\d{4,5}\s+/, '').replace(/\s*CSP\S+.*$/, '').trim();
+    return `<label style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);cursor:pointer">
+      <input type="checkbox" data-sub="${sub}" ${checked} style="width:18px;height:18px;flex-shrink:0">
+      <span style="flex:1"><strong style="font-size:13px">${sub}</strong><br>
+      <span style="font-size:12px;color:var(--muted)">${short}</span></span>
+    </label>`;
+  }).join('');
+  document.getElementById('wh-filter-modal').classList.add('open');
+}
+
+function closeWhFilter() {
+  const checkboxes = document.querySelectorAll('#wh-filter-list input[type=checkbox]');
+  const selected = [...checkboxes].filter(cb => cb.checked).map(cb => cb.dataset.sub);
+  const total = Object.keys(S.ml?._w || {}).length;
+
+  if (selected.length === total) {
+    whFilter = null;
+    localStorage.removeItem(WH_FILTER_KEY);
+  } else {
+    whFilter = new Set(selected);
+    localStorage.setItem(WH_FILTER_KEY, JSON.stringify(selected));
+  }
+
+  document.getElementById('wh-filter-modal').classList.remove('open');
+  initLager();
+  const sel = document.getElementById('lager-select');
+  if (sel.value && !isWhVisible(sel.value)) { sel.value = ''; showLager(); }
+  const q = document.getElementById('srch-inp').value.trim();
+  if (q) doSearch();
+}
+
+function whFilterAll()  { document.querySelectorAll('#wh-filter-list input[type=checkbox]').forEach(cb => cb.checked = true); }
+function whFilterNone() { document.querySelectorAll('#wh-filter-list input[type=checkbox]').forEach(cb => cb.checked = false); }
 
 // ── FINISH TAB ────────────────────────────────────────────────────────────────
 function renderFinish() {
